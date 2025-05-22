@@ -206,39 +206,76 @@ export default function App() {
               ))}
             </ul>
 
-            <h2>Guest Availability</h2>
-            <table style={{ width: "100%", borderCollapse: "collapse" }}>
-              <thead>
-                <tr>
-                  <th>Guest</th>
-                  {days.flatMap((day) =>
-                    meals.map((meal) => (
-                      <th key={`${day}-${meal}`}>
-                        {day} - {meal}
-                      </th>
-                    ))
-                  )}
-                </tr>
-              </thead>
-              <tbody>
-                {guests.map((guest) => (
-                  <tr key={guest}>
-                    <td>{guest}</td>
-                    {days.flatMap((day) =>
-                      meals.map((meal) => (
-                        <td key={`${guest}-${day}-${meal}`}>
-                          <input
-                            type="checkbox"
-                            checked={schedule[day]?.[meal]?.guests?.[guest] || false}
-                            onChange={() => toggleGuestPresence(guest, day, meal)}
-                          />
-                        </td>
-                      ))
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+// Responsive Guest Availability Grid with alternating rows and sticky guest names
+<h2>Guest Availability</h2>
+<div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+  <div style={{ minWidth: '600px' }}>
+    <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+      <thead>
+        <tr>
+          <th style="border: 1px solid #ccc; padding: 8px; min-width: 120px; background: #f0f0f0; position: sticky; left: 0; z-index: 2;">Guest</th>
+          {days.flatMap((day) =>
+            meals.map((meal) => (
+              <th
+                key={`${day}-${meal}`}
+                style={{
+                  border: '1px solid #ccc',
+                  padding: '4px',
+                  writingMode: 'vertical-rl',
+                  transform: 'rotate(180deg)',
+                  textAlign: 'left',
+                  minWidth: '40px',
+                  background: '#f9f9f9'
+                }}
+              >
+                {day} - {meal}
+                <div>
+                  <input
+                    type="checkbox"
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setSchedule((prev) => {
+                        const updated = { ...prev };
+                        guests.forEach((guest) => {
+                          if (!updated[day]) updated[day] = {};
+                          if (!updated[day][meal]) updated[day][meal] = { guests: {}, ingredients: [], dish: '' };
+                          updated[day][meal].guests[guest] = checked;
+                        });
+                        return updated;
+                      });
+                    }}
+                  />
+                </div>
+              </th>
+            ))
+          )}
+        </tr>
+      </thead>
+      <tbody>
+        {guests.map((guest, rowIndex) => (
+          <tr key={guest} style={{ backgroundColor: rowIndex % 2 === 0 ? '#ffffff' : '#f7f7f7' }}>
+            <td style="border: 1px solid #ccc; padding: 8px; font-weight: bold; white-space: nowrap; position: sticky; left: 0; background: #fff; z-index: 1;">
+              {guest}
+            </td>
+            {days.flatMap((day) =>
+              meals.map((meal) => (
+                <td key={`${guest}-${day}-${meal}`} style={{ border: '1px solid #ccc', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={schedule[day]?.[meal]?.guests?.[guest] || false}
+                    onChange={() => toggleGuestPresence(guest, day, meal)}
+                  />
+                </td>
+              ))
+            )}
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+              
 
             <h2>Edit Days</h2>
             <input
