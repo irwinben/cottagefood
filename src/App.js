@@ -19,6 +19,7 @@ const firebaseConfig = {
 // 🔧 Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
 export default function App() {
   const [guests, setGuests] = useState([]);
   const [newGuest, setNewGuest] = useState("");
@@ -168,17 +169,17 @@ export default function App() {
           <h2>Guests</h2>
           <input
             value={newGuest}
-            onChange={e => setNewGuest(e.target.value)}
+            onChange={(e) => setNewGuest(e.target.value)}
             placeholder="Add guest name"
           />
-          <button onClick={addGuest}>Add Guest</button>
+          <button type="button" onClick={addGuest}>Add Guest</button>
           <ul>{guests.map(g => <li key={g}>{g}</li>)}</ul>
 
           <h2>Edit Days</h2>
           <input
             placeholder="Comma-separated days (e.g. Friday,Saturday)"
             value={days.join(",")}
-            onChange={e => setDays(e.target.value.split(",").map(d => d.trim()))}
+            onChange={(e) => setDays(e.target.value.split(",").map(d => d.trim()))}
             style={{ width: "100%" }}
           />
 
@@ -186,7 +187,7 @@ export default function App() {
           <input
             placeholder="Comma-separated meals (e.g. Breakfast,Lunch,Dinner)"
             value={meals.join(",")}
-            onChange={e => setMeals(e.target.value.split(",").map(m => m.trim()))}
+            onChange={(e) => setMeals(e.target.value.split(",").map(m => m.trim()))}
             style={{ width: "100%" }}
           />
 
@@ -199,7 +200,7 @@ export default function App() {
                   <h4>{meal}</h4>
                   <input
                     value={schedule[day]?.[meal]?.dish || ""}
-                    onChange={e => updateDish(day, meal, e.target.value)}
+                    onChange={(e) => updateDish(day, meal, e.target.value)}
                     placeholder="Dish name"
                     style={{ width: "100%", marginBottom: 5 }}
                   />
@@ -208,12 +209,12 @@ export default function App() {
                       <input
                         placeholder="Ingredient"
                         value={ing.name}
-                        onChange={e => updateIngredient(day, meal, i, "name", e.target.value)}
+                        onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
                         style={{ flex: 1 }}
                       />
                       <select
                         value={ing.person}
-                        onChange={e => updateIngredient(day, meal, i, "person", e.target.value)}
+                        onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
                         style={{ flex: 1 }}
                       >
                         <option value="">Select person</option>
@@ -223,7 +224,7 @@ export default function App() {
                       </select>
                     </div>
                   ))}
-                  <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+                  <button type="button" onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
                 </div>
               ))}
             </div>
@@ -239,8 +240,8 @@ export default function App() {
           ))}
 
           <h2>Export</h2>
-          <button onClick={downloadCSV} style={{ marginRight: 10 }}>Download CSV</button>
-          <button onClick={downloadPDF}>Download PDF</button>
+          <button type="button" onClick={downloadCSV} style={{ marginRight: 10 }}>Download CSV</button>
+          <button type="button" onClick={downloadPDF}>Download PDF</button>
         </>
       )}
     </div>
