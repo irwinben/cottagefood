@@ -177,7 +177,16 @@ const updateDish = (day, meal, dish) => {
             placeholder="Add guest name"
           />
           <button type="button" onClick={addGuest}>Add Guest</button>
-          <ul>{guests.map(g => <li key={g}>{g}</li>)}</ul>
+         <ul>
+  {guests.map(g => (
+    <li key={g}>
+      {g}{" "}
+      <button type="button" onClick={() => setGuests(guests.filter(guest => guest !== g))}>
+        ❌ Remove
+      </button>
+    </li>
+  ))}
+</ul>
 
           <h2>Edit Days</h2>
           <input
