@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -24,6 +24,8 @@ export default function App() {
   const [days, setDays] = useState([]);
   const [meals, setMeals] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,6 +41,12 @@ export default function App() {
       setLoading(false);
     };
     fetchData();
+
+    const q = query(collection(db, "chat"), orderBy("timestamp", "asc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setChatMessages(snapshot.docs.map(doc => doc.data()));
+    });
+    return () => unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -51,6 +59,15 @@ export default function App() {
       });
     }
   }, [guests, schedule, days, meals]);
+
+  const sendMessage = async () => {
+    if (chatInput.trim() === "") return;
+    await addDoc(collection(db, "chat"), {
+      message: chatInput,
+      timestamp: new Date()
+    });
+    setChatInput("");
+  };
 
   const addGuest = () => {
     const name = newGuest.trim();
@@ -123,9 +140,7 @@ export default function App() {
   const downloadCSV = () => {
     const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
     const rows = getExportData();
-    const csvContent = [header, ...rows]
-      .map(row => row.map(cell => `"${cell}"`).join(","))
-      .join("\n");
+    const csvContent = [header, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
     link.href = URL.createObjectURL(blob);
@@ -162,129 +177,134 @@ export default function App() {
   const summary = summaryByPerson();
 
   return (
-    <div style={{ fontFamily: "Arial", padding: 20 }}>
-      <h1>Holiday Meal Scheduler</h1>
+    <div style={{ fontFamily: "Arial", padding: 20, display: "flex" }}>
+      <div style={{ flex: 3, paddingRight: 20 }}>
+        <h1>Holiday Meal Scheduler</h1>
 
-      {loading ? <p>Loading shared plan...</p> : (
-        <>
-          <h2>Guests</h2>
-          <input
-            value={newGuest}
-            onChange={(e) => setNewGuest(e.target.value)}
-            placeholder="Add guest name"
-          />
-          <button type="button" onClick={addGuest}>Add Guest</button>
-          <ul>
-            {guests.map(g => (
-              <li key={g}>
-                {g} {" "}
-                <button type="button" onClick={() => setGuests(guests.filter(guest => guest !== g))}>
-                  ❌ Remove
-                </button>
-              </li>
-            ))}
-          </ul>
-
-          <h2>Edit Days</h2>
-          <input
-            placeholder="Comma-separated days (e.g. Friday,Saturday)"
-            value={days.join(",")}
-            onChange={(e) => setDays(e.target.value.split(",").map(d => d.trim()))}
-            style={{ width: "100%" }}
-          />
-
-          <h2>Edit Meals</h2>
-          <input
-            placeholder="Comma-separated meals (e.g. Breakfast,Lunch,Dinner)"
-            value={meals.join(",")}
-            onChange={(e) => setMeals(e.target.value.split(",").map(m => m.trim()))}
-            style={{ width: "100%" }}
-          />
-
-          <h2>Meal Plan</h2>
-          {days.map(day => (
-            <div key={day}>
-              <h3>
-                {day} {" "}
-                <button
-                  type="button"
-                  onClick={() => {
-                    const updatedDays = days.filter(d => d !== day);
-                    const newSchedule = { ...schedule };
-                    delete newSchedule[day];
-                    setDays(updatedDays);
-                    setSchedule(newSchedule);
-                  }}
-                >
-                  ❌ Remove
-                </button>
-              </h3>
-
-              {meals.map(meal => (
-                <div
-                  key={meal}
-                  style={{
-                    border: "1px solid #ccc",
-                    margin: "10px 0",
-                    padding: 10,
-                    backgroundColor: "#f9f9f9"
-                  }}
-                >
-                  <h4 style={{ fontWeight: "bold", color: "#2c3e50" }}>{meal}</h4>
-                  <input
-                    value={schedule[day]?.[meal]?.dish || ""}
-                    onChange={(e) => updateDish(day, meal, e.target.value)}
-                    placeholder="Dish name"
-                    style={{ width: "100%", marginBottom: 10 }}
-                  />
-                  <div style={{ marginLeft: "20px" }}>
-                    {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          display: "flex",
-                          gap: 10,
-                          marginBottom: 5,
-                          alignItems: "center"
-                        }}
-                      >
-                        <input
-                          placeholder="Ingredient"
-                          value={ing.name}
-                          onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
-                          style={{ flex: 1 }}
-                        />
-                        <select
-                          value={ing.person}
-                          onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
-                          style={{ flex: 1 }}
-                        >
-                          <option value="">Unassigned</option>
-                          {guests.map(g => <option key={g} value={g}>{g}</option>)}
-                        </select>
-                      </div>
-                    ))}
-                    <button type="button" onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
-                  </div>
-                </div>
+        {loading ? <p>Loading shared plan...</p> : (
+          <>
+            <h2>Guests</h2>
+            <input
+              value={newGuest}
+              onChange={(e) => setNewGuest(e.target.value)}
+              placeholder="Add guest name"
+            />
+            <button type="button" onClick={addGuest}>Add Guest</button>
+            <ul>
+              {guests.map(g => (
+                <li key={g}>
+                  {g} {" "}
+                  <button type="button" onClick={() => setGuests(guests.filter(guest => guest !== g))}>
+                    ❌ Remove
+                  </button>
+                </li>
               ))}
-            </div>
-          ))}
+            </ul>
 
-          <h2>Summary by Person</h2>
-          {Object.keys(summary).length === 0 && <p>No assignments yet.</p>}
-          {Object.entries(summary).map(([person, items]) => (
-            <div key={person}>
-              <strong>{person}</strong>
-              <ul>{items.map((item, i) => <li key={i}>{item}</li>)}</ul>
-            </div>
-          ))}
+            <h2>Edit Days</h2>
+            <input
+              placeholder="Comma-separated days (e.g. Friday,Saturday)"
+              value={days.join(",")}
+              onChange={(e) => setDays(e.target.value.split(",").map(d => d.trim()))}
+              style={{ width: "100%" }}
+            />
 
-          <h2>Export</h2>
-          <button type="button" onClick={downloadCSV} style={{ marginRight: 10 }}>Download CSV</button>
-          <button type="button" onClick={downloadPDF}>Download PDF</button>
-        </>
-      )}
+            <h2>Edit Meals</h2>
+            <input
+              placeholder="Comma-separated meals (e.g. Breakfast,Lunch,Dinner)"
+              value={meals.join(",")}
+              onChange={(e) => setMeals(e.target.value.split(",").map(m => m.trim()))}
+              style={{ width: "100%" }}
+            />
+
+            <h2>Meal Plan</h2>
+            {days.map(day => (
+              <div key={day}>
+                <h3>
+                  {day} {" "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const updatedDays = days.filter(d => d !== day);
+                      const newSchedule = { ...schedule };
+                      delete newSchedule[day];
+                      setDays(updatedDays);
+                      setSchedule(newSchedule);
+                    }}
+                  >
+                    ❌ Remove
+                  </button>
+                </h3>
+
+                {meals.map(meal => (
+                  <div
+                    key={meal}
+                    style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10, backgroundColor: "#f9f9f9" }}
+                  >
+                    <h4 style={{ fontWeight: "bold", color: "#2c3e50" }}>{meal}</h4>
+                    <input
+                      value={schedule[day]?.[meal]?.dish || ""}
+                      onChange={(e) => updateDish(day, meal, e.target.value)}
+                      placeholder="Dish name"
+                      style={{ width: "100%", marginBottom: 10 }}
+                    />
+                    <div style={{ marginLeft: "20px" }}>
+                      {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+                        <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "center" }}>
+                          <input
+                            placeholder="Ingredient"
+                            value={ing.name}
+                            onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
+                            style={{ flex: 1 }}
+                          />
+                          <select
+                            value={ing.person}
+                            onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Unassigned</option>
+                            {guests.map(g => <option key={g} value={g}>{g}</option>)}
+                          </select>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <h2>Summary by Person</h2>
+            {Object.keys(summary).length === 0 && <p>No assignments yet.</p>}
+            {Object.entries(summary).map(([person, items]) => (
+              <div key={person}>
+                <strong>{person}</strong>
+                <ul>{items.map((item, i) => <li key={i}>{item}</li>)}</ul>
+              </div>
+            ))}
+
+            <h2>Export</h2>
+            <button type="button" onClick={downloadCSV} style={{ marginRight: 10 }}>Download CSV</button>
+            <button type="button" onClick={downloadPDF}>Download PDF</button>
+          </>
+        )}
+      </div>
+
+      <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
+        <h2>Chat</h2>
+        <div style={{ height: "300px", overflowY: "auto", border: "1px solid #ddd", padding: 10, marginBottom: 10 }}>
+          {chatMessages.map((msg, i) => (
+            <p key={i} style={{ margin: "5px 0" }}>{msg.message}</p>
+          ))}
+        </div>
+        <input
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          placeholder="Type a message"
+          style={{ width: "100%", marginBottom: 10 }}
+        />
+        <button type="button" onClick={sendMessage}>Send</button>
+      </div>
     </div>
   );
 }
