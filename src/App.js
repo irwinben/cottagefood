@@ -207,7 +207,25 @@ const updateDish = (day, meal, dish) => {
           <h2>Meal Plan</h2>
           {days.map(day => (
             <div key={day}>
-              <h3>{day}</h3>
+
+            
+              <h3>
+  {day}{" "}
+  <button
+    type="button"
+    onClick={() => {
+      const updatedDays = days.filter(d => d !== day);
+      const newSchedule = { ...schedule };
+      delete newSchedule[day];
+      setDays(updatedDays);
+      setSchedule(newSchedule);
+    }}
+  >
+    ❌ Remove
+  </button>
+</h3>
+
+                    
               {meals.map(meal => (
                 <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
                   <h4>{meal}</h4>
