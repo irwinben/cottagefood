@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
@@ -22,7 +21,7 @@ const firebaseConfig = {
   storageBucket: "cottage-meal-planner.firebasestorage.app",
   messagingSenderId: "107654447812",
   appId: "1:107654447812:web:379ad2549e95f870eaff91",
-  measurementId: "G-FLQ90D3MSC",
+  measurementId: "G-FLQ90D3MSC"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -79,8 +78,7 @@ export default function App() {
     });
     setChatInput("");
   };
-
-  const addGuest = () => {
+    const addGuest = () => {
     const name = newGuest.trim();
     if (name && !guests.includes(name)) {
       setGuests([...guests, name]);
@@ -108,8 +106,11 @@ export default function App() {
   };
 
   const addIngredient = (day, meal) => {
-    const newIngredients = [...(schedule[day]?.[meal]?.ingredients || []), { name: "", person: "" }];
-    setSchedule(prev => ({
+    const newIngredients = [
+      ...(schedule[day]?.[meal]?.ingredients || []),
+      { name: "", person: "" }
+    ];
+    setSchedule((prev) => ({
       ...prev,
       [day]: {
         ...prev[day],
@@ -126,7 +127,7 @@ export default function App() {
   const updateIngredient = (day, meal, index, field, value) => {
     const updated = [...(schedule[day][meal]?.ingredients || [])];
     updated[index][field] = value;
-    setSchedule(prev => ({
+    setSchedule((prev) => ({
       ...prev,
       [day]: {
         ...prev[day],
@@ -139,9 +140,13 @@ export default function App() {
   };
 
   const updateDish = (day, meal, dish) => {
-    setSchedule(prev => {
+    setSchedule((prev) => {
       const dayData = prev[day] || {};
-      const mealData = dayData[meal] || { dish: "", ingredients: [], guests: {} };
+      const mealData = dayData[meal] || {
+        dish: "",
+        ingredients: [],
+        guests: {}
+      };
       return {
         ...prev,
         [day]: {
@@ -171,12 +176,257 @@ export default function App() {
   };
 
   const summary = summaryByPerson();
+    return (
+    <div style={{ fontFamily: "Arial", padding: 20, display: "flex", flexDirection: "row" }}>
+      <div style={{ flex: 3, paddingRight: 20 }}>
+        <h1>Holiday Meal Scheduler</h1>
 
-  return (
-    <div style={{ fontFamily: "Arial", padding: 20, display: "flex" }}>
-      {/* ... full UI rendering here ... */}
-      <h1>Holiday Meal Scheduler</h1>
-      {/* Full JSX continues here including Chat, Guest Grid, Meal Planning */}
+        {loading ? (
+          <p>Loading shared plan...</p>
+        ) : (
+          <>
+            <h2>Guests</h2>
+            <input
+              value={newGuest}
+              onChange={(e) => setNewGuest(e.target.value)}
+              placeholder="Add guest name"
+            />
+            <button type="button" onClick={addGuest}>Add Guest</button>
+            <ul>
+              {guests.map((g) => (
+                <li key={g}>
+                  {g}{" "}
+                  <button onClick={() => setGuests(guests.filter((guest) => guest !== g))}>
+                    ❌ Remove
+                  </button>
+                </li>
+              ))}
+            </ul>
+
+            <h2>Guest Availability</h2>
+            <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+              <div style={{ minWidth: '600px' }}>
+                <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th style={{
+                        border: '1px solid #ccc',
+                        padding: '8px',
+                        minWidth: 120,
+                        background: '#f0f0f0',
+                        position: 'sticky',
+                        left: 0,
+                        zIndex: 2
+                      }}>Guest</th>
+                      {days.flatMap(day =>
+                        meals.map(meal => (
+                          <th
+                            key={`${day}-${meal}`}
+                            style={{
+                              border: '1px solid #ccc',
+                              padding: '4px',
+                              writingMode: 'vertical-rl',
+                              transform: 'rotate(180deg)',
+                              textAlign: 'left',
+                              minWidth: '40px',
+                              background: '#f9f9f9'
+                            }}
+                          >
+                            {day} - {meal}
+                            <div>
+                              <input
+                                type="checkbox"
+                                onChange={(e) => {
+                                  const checked = e.target.checked;
+                                  setSchedule(prev => {
+                                    const updated = { ...prev };
+                                    guests.forEach(guest => {
+                                      if (!updated[day]) updated[day] = {};
+                                      if (!updated[day][meal])
+                                        updated[day][meal] = { guests: {}, ingredients: [], dish: "" };
+                                      updated[day][meal].guests[guest] = checked;
+                                    });
+                                    return updated;
+                                  });
+                                }}
+                              />
+                            </div>
+                          </th>
+                        ))
+                      )}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {guests.map((guest, rowIndex) => (
+                      <tr key={guest} style={{ backgroundColor: rowIndex % 2 === 0 ? '#ffffff' : '#f7f7f7' }}>
+                        <td style={{
+                          border: '1px solid #ccc',
+                          padding: '8px',
+                          fontWeight: 'bold',
+                          whiteSpace: 'nowrap',
+                          position: 'sticky',
+                          left: 0,
+                          background: '#fff',
+                          zIndex: 1
+                        }}>
+                          {guest}
+                        </td>
+                        {days.flatMap(day =>
+                          meals.map(meal => (
+                            <td key={`${guest}-${day}-${meal}`} style={{ border: '1px solid #ccc', textAlign: 'center' }}>
+                              <input
+                                type="checkbox"
+                                checked={schedule[day]?.[meal]?.guests?.[guest] || false}
+                                onChange={() => toggleGuestPresence(guest, day, meal)}
+                              />
+                            </td>
+                          ))
+                        )}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <h2>Edit Days</h2>
+            <input
+              placeholder="Comma-separated days (e.g. Friday,Saturday)"
+              value={days.join(",")}
+              onChange={(e) => setDays(e.target.value.split(",").map((d) => d.trim()))}
+              style={{ width: "100%" }}
+            />
+
+            <h2>Edit Meals</h2>
+            <input
+              placeholder="Comma-separated meals (e.g. Breakfast,Lunch,Dinner)"
+              value={meals.join(",")}
+              onChange={(e) => setMeals(e.target.value.split(",").map((m) => m.trim()))}
+              style={{ width: "100%" }}
+            />
+
+            <h2>Meal Plan</h2>
+            {days.map(day => (
+              <div key={day}>
+                <h3>{day}</h3>
+                {meals.map(meal => (
+                  <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
+                    <h4 style={{ fontWeight: "bold" }}>{meal}</h4>
+                    <p style={{ fontStyle: "italic", marginBottom: 5 }}>
+                      Guests attending: {
+                        Object.entries(schedule[day]?.[meal]?.guests || {})
+                          .filter(([_, attending]) => attending)
+                          .map(([guest]) => guest)
+                          .join(", ") || "None"
+                      }
+                    </p>
+                    <input
+                      value={schedule[day]?.[meal]?.dish || ""}
+                      onChange={(e) => updateDish(day, meal, e.target.value)}
+                      placeholder="Dish name"
+                      style={{ width: "100%", marginBottom: 10 }}
+                    />
+                    <div>
+                      {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+                        <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
+                          <input
+                            placeholder="Ingredient"
+                            value={ing.name}
+                            onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
+                            style={{ flex: 1 }}
+                          />
+                          <select
+                            value={ing.person}
+                            onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
+                            style={{ flex: 1 }}
+                          >
+                            <option value="">Unassigned</option>
+                            {guests.map((g) => (
+                              <option key={g} value={g}>{g}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ))}
+                      <button type="button" onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ))}
+
+            <h2>Summary by Person</h2>
+            {Object.keys(summary).length === 0 && <p>No assignments yet.</p>}
+            {Object.entries(summary).map(([person, items]) => (
+              <div key={person}>
+                <strong>{person}</strong>
+                <ul>{items.map((item, i) => <li key={i}>{item}</li>)}</ul>
+              </div>
+            ))}
+
+            <h2>Export</h2>
+            <button type="button" onClick={() => {
+              const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
+              const rows = [];
+              for (const day of days) {
+                for (const meal of meals) {
+                  const dish = schedule[day]?.[meal]?.dish || "";
+                  for (const item of schedule[day]?.[meal]?.ingredients || []) {
+                    rows.push([day, meal, dish, item.name, item.person]);
+                  }
+                }
+              }
+              const csvContent = [header, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\\n");
+              const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(blob);
+              link.download = "holiday-meal-plan.csv";
+              link.click();
+            }} style={{ marginRight: 10 }}>Download CSV</button>
+
+            <button type="button" onClick={() => {
+              const docPDF = new jsPDF();
+              docPDF.text("Holiday Meal Schedule", 14, 16);
+              const data = [];
+              for (const day of days) {
+                for (const meal of meals) {
+                  const dish = schedule[day]?.[meal]?.dish || "";
+                  for (const item of schedule[day]?.[meal]?.ingredients || []) {
+                    data.push([day, meal, dish, item.name, item.person]);
+                  }
+                }
+              }
+              docPDF.autoTable({
+                startY: 20,
+                head: [["Day", "Meal", "Dish", "Ingredient", "Person"]],
+                body: data
+              });
+              docPDF.save("holiday-meal-plan.pdf");
+            }}>Download PDF</button>
+          </>
+        )}
+      </div>
+
+      <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
+        <h2>Chat</h2>
+        <div style={{
+          height: "300px",
+          overflowY: "auto",
+          border: "1px solid #ddd",
+          padding: 10,
+          marginBottom: 10
+        }}>
+          {chatMessages.map((msg, i) => (
+            <p key={i} style={{ margin: "5px 0" }}>{msg.message}</p>
+          ))}
+        </div>
+        <input
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          placeholder="Type a message"
+          style={{ width: "100%", marginBottom: 10 }}
+        />
+        <button type="button" onClick={sendMessage}>Send</button>
+      </div>
     </div>
   );
 }
