@@ -4,7 +4,6 @@ import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
-// 🔐 Paste your Firebase config here:
 const firebaseConfig = {
   apiKey: "AIzaSyA1-_xY_BaqYDBZhKYT0qA-vUc_svleaRM",
   authDomain: "cottage-meal-planner.firebaseapp.com",
@@ -15,8 +14,6 @@ const firebaseConfig = {
   measurementId: "G-FLQ90D3MSC"
 };
 
-
-// 🔧 Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
@@ -93,22 +90,22 @@ export default function App() {
     }));
   };
 
-const updateDish = (day, meal, dish) => {
-  setSchedule(prev => {
-    const dayData = prev[day] || {};
-    const mealData = dayData[meal] || { dish: "", ingredients: [] };
-    return {
-      ...prev,
-      [day]: {
-        ...dayData,
-        [meal]: {
-          ...mealData,
-          dish
+  const updateDish = (day, meal, dish) => {
+    setSchedule(prev => {
+      const dayData = prev[day] || {};
+      const mealData = dayData[meal] || { dish: "", ingredients: [] };
+      return {
+        ...prev,
+        [day]: {
+          ...dayData,
+          [meal]: {
+            ...mealData,
+            dish
+          }
         }
-      }
-    };
-  });
-};
+      };
+    });
+  };
 
   const getExportData = () => {
     const data = [];
@@ -177,16 +174,16 @@ const updateDish = (day, meal, dish) => {
             placeholder="Add guest name"
           />
           <button type="button" onClick={addGuest}>Add Guest</button>
-         <ul>
-  {guests.map(g => (
-    <li key={g}>
-      {g}{" "}
-      <button type="button" onClick={() => setGuests(guests.filter(guest => guest !== g))}>
-        ❌ Remove
-      </button>
-    </li>
-  ))}
-</ul>
+          <ul>
+            {guests.map(g => (
+              <li key={g}>
+                {g} {" "}
+                <button type="button" onClick={() => setGuests(guests.filter(guest => guest !== g))}>
+                  ❌ Remove
+                </button>
+              </li>
+            ))}
+          </ul>
 
           <h2>Edit Days</h2>
           <input
@@ -207,80 +204,68 @@ const updateDish = (day, meal, dish) => {
           <h2>Meal Plan</h2>
           {days.map(day => (
             <div key={day}>
-
-            
               <h3>
-  {day}{" "}
-  <button
-    type="button"
-    onClick={() => {
-      const updatedDays = days.filter(d => d !== day);
-      const newSchedule = { ...schedule };
-      delete newSchedule[day];
-      setDays(updatedDays);
-      setSchedule(newSchedule);
-    }}
-  >
-    ❌ Remove
-  </button>
-</h3>
+                {day} {" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updatedDays = days.filter(d => d !== day);
+                    const newSchedule = { ...schedule };
+                    delete newSchedule[day];
+                    setDays(updatedDays);
+                    setSchedule(newSchedule);
+                  }}
+                >
+                  ❌ Remove
+                </button>
+              </h3>
 
-        {meals.map(meal => (
-  <div
-    key={meal}
-    style={{
-      border: "1px solid #ccc",
-      margin: "10px 0",
-      padding: 10,
-      backgroundColor: "#f9f9f9"
-    }}
-  >
-    <h4 style={{ fontWeight: "bold", color: "#2c3e50" }}>{meal}</h4>
-    <input
-      value={schedule[day]?.[meal]?.dish || ""}
-      onChange={(e) => updateDish(day, meal, e.target.value)}
-      placeholder="Dish name"
-      style={{ width: "100%", marginBottom: 10 }}
-    />
-    <div style={{ marginLeft: "20px" }}>
-      {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
-        <div
-          key={i}
-          style={{
-            display: "flex",
-            gap: 10,
-            marginBottom: 5,
-            alignItems: "center"
-          }}
-        >
-          <input
-            placeholder="Ingredient"
-            value={ing.name}
-            onChange={(e) =>
-              updateIngredient(day, meal, i, "name", e.target.value)
-            }
-            style={{ flex: 1 }}
-          />
-          <select
-            value={ing.person}
-            onChange={(e) =>
-              updateIngredient(day, meal, i, "person", e.target.value)
-            }
-            style={{ flex: 1 }}
-          >
-            {/* options here */}
-          </select>
-        </div>
-      ))}
-    </div>
-  </div>
-))}            
-          
-
-
-
-                    
-                  <button type="button" onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+              {meals.map(meal => (
+                <div
+                  key={meal}
+                  style={{
+                    border: "1px solid #ccc",
+                    margin: "10px 0",
+                    padding: 10,
+                    backgroundColor: "#f9f9f9"
+                  }}
+                >
+                  <h4 style={{ fontWeight: "bold", color: "#2c3e50" }}>{meal}</h4>
+                  <input
+                    value={schedule[day]?.[meal]?.dish || ""}
+                    onChange={(e) => updateDish(day, meal, e.target.value)}
+                    placeholder="Dish name"
+                    style={{ width: "100%", marginBottom: 10 }}
+                  />
+                  <div style={{ marginLeft: "20px" }}>
+                    {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+                      <div
+                        key={i}
+                        style={{
+                          display: "flex",
+                          gap: 10,
+                          marginBottom: 5,
+                          alignItems: "center"
+                        }}
+                      >
+                        <input
+                          placeholder="Ingredient"
+                          value={ing.name}
+                          onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
+                          style={{ flex: 1 }}
+                        />
+                        <select
+                          value={ing.person}
+                          onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
+                          style={{ flex: 1 }}
+                        >
+                          <option value="">Unassigned</option>
+                          {guests.map(g => <option key={g} value={g}>{g}</option>)}
+                        </select>
+                      </div>
+                    ))}
+                    <button type="button" onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+                  </div>
                 </div>
               ))}
             </div>
