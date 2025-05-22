@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
-import { getFirestore, doc, getDoc, setDoc, collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import {
+  getFirestore,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  addDoc,
+  onSnapshot,
+  query,
+  orderBy
+} from "firebase/firestore";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
@@ -86,7 +96,8 @@ export default function App() {
         [meal]: {
           ...prev[day]?.[meal],
           ingredients: newIngredients,
-          dish: prev[day]?.[meal]?.dish || ""
+          dish: prev[day]?.[meal]?.dish || "",
+          guests: prev[day]?.[meal]?.guests || {}
         }
       }
     }));
@@ -110,7 +121,7 @@ export default function App() {
   const updateDish = (day, meal, dish) => {
     setSchedule(prev => {
       const dayData = prev[day] || {};
-      const mealData = dayData[meal] || { dish: "", ingredients: [] };
+      const mealData = dayData[meal] || { dish: "", ingredients: [], guests: {} };
       return {
         ...prev,
         [day]: {
@@ -124,39 +135,23 @@ export default function App() {
     });
   };
 
-  const getExportData = () => {
-    const data = [];
-    for (const day of days) {
-      for (const meal of meals) {
-        const dish = schedule[day]?.[meal]?.dish || "";
-        for (const item of schedule[day]?.[meal]?.ingredients || []) {
-          data.push([day, meal, dish, item.name, item.person]);
+  const toggleGuestPresence = (day, meal, guest) => {
+    setSchedule(prev => {
+      const current = prev[day]?.[meal]?.guests?.[guest] || false;
+      return {
+        ...prev,
+        [day]: {
+          ...prev[day],
+          [meal]: {
+            ...prev[day]?.[meal],
+            guests: {
+              ...prev[day]?.[meal]?.guests,
+              [guest]: !current
+            }
+          }
         }
-      }
-    }
-    return data;
-  };
-
-  const downloadCSV = () => {
-    const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
-    const rows = getExportData();
-    const csvContent = [header, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "holiday-meal-plan.csv";
-    link.click();
-  };
-
-  const downloadPDF = () => {
-    const docPDF = new jsPDF();
-    docPDF.text("Holiday Meal Schedule", 14, 16);
-    docPDF.autoTable({
-      startY: 20,
-      head: [["Day", "Meal", "Dish", "Ingredient", "Person"]],
-      body: getExportData()
+      };
     });
-    docPDF.save("holiday-meal-plan.pdf");
   };
 
   const summaryByPerson = () => {
@@ -193,7 +188,7 @@ export default function App() {
             <ul>
               {guests.map(g => (
                 <li key={g}>
-                  {g} {" "}
+                  {g}{" "}
                   <button type="button" onClick={() => setGuests(guests.filter(guest => guest !== g))}>
                     ❌ Remove
                   </button>
@@ -220,34 +215,51 @@ export default function App() {
             <h2>Meal Plan</h2>
             {days.map(day => (
               <div key={day}>
-                <h3>
-                  {day} {" "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const updatedDays = days.filter(d => d !== day);
-                      const newSchedule = { ...schedule };
-                      delete newSchedule[day];
-                      setDays(updatedDays);
-                      setSchedule(newSchedule);
-                    }}
-                  >
-                    ❌ Remove
-                  </button>
-                </h3>
-
+                <h3>{day}</h3>
                 {meals.map(meal => (
                   <div
                     key={meal}
-                    style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10, backgroundColor: "#f9f9f9" }}
+                    style={{
+                      border: "1px solid #ccc",
+                      margin: "10px 0",
+                      padding: 10,
+                      backgroundColor: "#f9f9f9"
+                    }}
                   >
                     <h4 style={{ fontWeight: "bold", color: "#2c3e50" }}>{meal}</h4>
+
+                    <p style={{ fontStyle: "italic", marginBottom: 5 }}>
+                      Guests attending: {
+                        Object.entries(schedule[day]?.[meal]?.guests || {})
+                          .filter(([_, attending]) => attending)
+                          .map(([guest]) => guest)
+                          .join(", ") || "None"
+                      }
+                    </p>
+
                     <input
                       value={schedule[day]?.[meal]?.dish || ""}
                       onChange={(e) => updateDish(day, meal, e.target.value)}
                       placeholder="Dish name"
                       style={{ width: "100%", marginBottom: 10 }}
                     />
+
+                    <div style={{ marginBottom: 10 }}>
+                      <strong>Guests Present:</strong>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 5 }}>
+                        {guests.map(g => (
+                          <label key={g} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <input
+                              type="checkbox"
+                              checked={schedule[day]?.[meal]?.guests?.[g] || false}
+                              onChange={() => toggleGuestPresence(day, meal, g)}
+                            />
+                            {g}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
                     <div style={{ marginLeft: "20px" }}>
                       {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
                         <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5, alignItems: "center" }}>
@@ -284,8 +296,44 @@ export default function App() {
             ))}
 
             <h2>Export</h2>
-            <button type="button" onClick={downloadCSV} style={{ marginRight: 10 }}>Download CSV</button>
-            <button type="button" onClick={downloadPDF}>Download PDF</button>
+            <button type="button" onClick={() => {
+              const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
+              const rows = [];
+              for (const day of days) {
+                for (const meal of meals) {
+                  const dish = schedule[day]?.[meal]?.dish || "";
+                  for (const item of schedule[day]?.[meal]?.ingredients || []) {
+                    rows.push([day, meal, dish, item.name, item.person]);
+                  }
+                }
+              }
+              const csvContent = [header, ...rows].map(row => row.map(cell => `"${cell}"`).join(",")).join("\\n");
+              const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+              const link = document.createElement("a");
+              link.href = URL.createObjectURL(blob);
+              link.download = "holiday-meal-plan.csv";
+              link.click();
+            }} style={{ marginRight: 10 }}>Download CSV</button>
+
+            <button type="button" onClick={() => {
+              const docPDF = new jsPDF();
+              docPDF.text("Holiday Meal Schedule", 14, 16);
+              const data = [];
+              for (const day of days) {
+                for (const meal of meals) {
+                  const dish = schedule[day]?.[meal]?.dish || "";
+                  for (const item of schedule[day]?.[meal]?.ingredients || []) {
+                    data.push([day, meal, dish, item.name, item.person]);
+                  }
+                }
+              }
+              docPDF.autoTable({
+                startY: 20,
+                head: [["Day", "Meal", "Dish", "Ingredient", "Person"]],
+                body: data
+              });
+              docPDF.save("holiday-meal-plan.pdf");
+            }}>Download PDF</button>
           </>
         )}
       </div>
