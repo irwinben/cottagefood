@@ -1,4 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
+
+// 🔐 Paste your Firebase config here:
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "SENDER_ID",
+  appId: "APP_ID"
+};
+
+// 🔧 Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 const days = ["Friday", "Saturday", "Sunday"];
 const meals = ["Breakfast", "Lunch", "Dinner", "Snacks"];
@@ -15,6 +31,32 @@ export default function App() {
   const [guests, setGuests] = useState([]);
   const [newGuest, setNewGuest] = useState("");
   const [schedule, setSchedule] = useState(defaultSchedule);
+  const [loading, setLoading] = useState(true);
+
+  // 🔄 Load data from Firebase
+  useEffect(() => {
+    const fetchData = async () => {
+      const docRef = doc(db, "mealScheduler", "sharedPlan");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        const data = docSnap.data();
+        setGuests(data.guests || []);
+        setSchedule(data.schedule || defaultSchedule);
+      }
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  // 💾 Save to Firebase anytime data changes
+  useEffect(() => {
+    if (!loading) {
+      setDoc(doc(db, "mealScheduler", "sharedPlan"), {
+        guests,
+        schedule
+      });
+    }
+  }, [guests, schedule]);
 
   const addGuest = () => {
     const name = newGuest.trim();
@@ -78,62 +120,66 @@ export default function App() {
     <div style={{ fontFamily: "Arial", padding: 20 }}>
       <h1>Holiday Meal Scheduler</h1>
 
-      <h2>Guests</h2>
-      <input
-        value={newGuest}
-        onChange={e => setNewGuest(e.target.value)}
-        placeholder="Add guest name"
-      />
-      <button onClick={addGuest}>Add Guest</button>
-      <ul>{guests.map(g => <li key={g}>{g}</li>)}</ul>
+      {loading ? <p>Loading shared plan...</p> : (
+        <>
+          <h2>Guests</h2>
+          <input
+            value={newGuest}
+            onChange={e => setNewGuest(e.target.value)}
+            placeholder="Add guest name"
+          />
+          <button onClick={addGuest}>Add Guest</button>
+          <ul>{guests.map(g => <li key={g}>{g}</li>)}</ul>
 
-      <h2>Meal Plan</h2>
-      {days.map(day => (
-        <div key={day}>
-          <h3>{day}</h3>
-          {meals.map(meal => (
-            <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
-              <h4>{meal}</h4>
-              <input
-                value={schedule[day][meal].dish}
-                onChange={e => updateDish(day, meal, e.target.value)}
-                placeholder="Dish name"
-                style={{ width: "100%", marginBottom: 5 }}
-              />
-              {schedule[day][meal].ingredients.map((ing, i) => (
-                <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
+          <h2>Meal Plan</h2>
+          {days.map(day => (
+            <div key={day}>
+              <h3>{day}</h3>
+              {meals.map(meal => (
+                <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
+                  <h4>{meal}</h4>
                   <input
-                    placeholder="Ingredient"
-                    value={ing.name}
-                    onChange={e => updateIngredient(day, meal, i, "name", e.target.value)}
-                    style={{ flex: 1 }}
+                    value={schedule[day][meal].dish}
+                    onChange={e => updateDish(day, meal, e.target.value)}
+                    placeholder="Dish name"
+                    style={{ width: "100%", marginBottom: 5 }}
                   />
-                  <select
-                    value={ing.person}
-                    onChange={e => updateIngredient(day, meal, i, "person", e.target.value)}
-                    style={{ flex: 1 }}
-                  >
-                    <option value="">Select person</option>
-                    {guests.map(g => (
-                      <option key={g} value={g}>{g}</option>
-                    ))}
-                  </select>
+                  {schedule[day][meal].ingredients.map((ing, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
+                      <input
+                        placeholder="Ingredient"
+                        value={ing.name}
+                        onChange={e => updateIngredient(day, meal, i, "name", e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      <select
+                        value={ing.person}
+                        onChange={e => updateIngredient(day, meal, i, "person", e.target.value)}
+                        style={{ flex: 1 }}
+                      >
+                        <option value="">Select person</option>
+                        {guests.map(g => (
+                          <option key={g} value={g}>{g}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                  <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
                 </div>
               ))}
-              <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
             </div>
           ))}
-        </div>
-      ))}
 
-      <h2>Summary by Person</h2>
-      {Object.keys(summary).length === 0 && <p>No assignments yet.</p>}
-      {Object.entries(summary).map(([person, items]) => (
-        <div key={person}>
-          <strong>{person}</strong>
-          <ul>{items.map((item, i) => <li key={i}>{item}</li>)}</ul>
-        </div>
-      ))}
+          <h2>Summary by Person</h2>
+          {Object.keys(summary).length === 0 && <p>No assignments yet.</p>}
+          {Object.entries(summary).map(([person, items]) => (
+            <div key={person}>
+              <strong>{person}</strong>
+              <ul>{items.map((item, i) => <li key={i}>{item}</li>)}</ul>
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
