@@ -283,7 +283,6 @@ export default function App() {
           <h2>Export</h2>
           <button type="button" onClick={downloadCSV} style={{ marginRight: 10 }}>Download CSV</button>
           <button type="button" onClick={downloadPDF}>Download PDF</button>
-        
       )}
     </div>
   );
