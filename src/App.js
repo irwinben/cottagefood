@@ -225,36 +225,61 @@ const updateDish = (day, meal, dish) => {
   </button>
 </h3>
 
+        {meals.map(meal => (
+  <div
+    key={meal}
+    style={{
+      border: "1px solid #ccc",
+      margin: "10px 0",
+      padding: 10,
+      backgroundColor: "#f9f9f9"
+    }}
+  >
+    <h4 style={{ fontWeight: "bold", color: "#2c3e50" }}>{meal}</h4>
+    <input
+      value={schedule[day]?.[meal]?.dish || ""}
+      onChange={(e) => updateDish(day, meal, e.target.value)}
+      placeholder="Dish name"
+      style={{ width: "100%", marginBottom: 10 }}
+    />
+    <div style={{ marginLeft: "20px" }}>
+      {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+        <div
+          key={i}
+          style={{
+            display: "flex",
+            gap: 10,
+            marginBottom: 5,
+            alignItems: "center"
+          }}
+        >
+          <input
+            placeholder="Ingredient"
+            value={ing.name}
+            onChange={(e) =>
+              updateIngredient(day, meal, i, "name", e.target.value)
+            }
+            style={{ flex: 1 }}
+          />
+          <select
+            value={ing.person}
+            onChange={(e) =>
+              updateIngredient(day, meal, i, "person", e.target.value)
+            }
+            style={{ flex: 1 }}
+          >
+            {/* options here */}
+          </select>
+        </div>
+      ))}
+    </div>
+  </div>
+))}            
+          
+
+
+
                     
-              {meals.map(meal => (
-                <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
-                  <h4>{meal}</h4>
-                  <input
-                    value={schedule[day]?.[meal]?.dish || ""}
-                    onChange={(e) => updateDish(day, meal, e.target.value)}
-                    placeholder="Dish name"
-                    style={{ width: "100%", marginBottom: 5 }}
-                  />
-                  {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
-                    <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
-                      <input
-                        placeholder="Ingredient"
-                        value={ing.name}
-                        onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
-                        style={{ flex: 1 }}
-                      />
-                      <select
-                        value={ing.person}
-                        onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
-                        style={{ flex: 1 }}
-                      >
-                        <option value="">Select person</option>
-                        {guests.map(g => (
-                          <option key={g} value={g}>{g}</option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
                   <button type="button" onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
                 </div>
               ))}
