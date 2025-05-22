@@ -4,13 +4,15 @@ import { getFirestore, doc, getDoc, setDoc } from "firebase/firestore";
 
 // 🔐 Paste your Firebase config here:
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID"
+  apiKey: "AIzaSyA1-_xY_BaqYDBZhKYT0qA-vUc_svleaRM",
+  authDomain: "cottage-meal-planner.firebaseapp.com",
+  projectId: "cottage-meal-planner",
+  storageBucket: "cottage-meal-planner.firebasestorage.app",
+  messagingSenderId: "107654447812",
+  appId: "1:107654447812:web:379ad2549e95f870eaff91",
+  measurementId: "G-FLQ90D3MSC"
 };
+
 
 // 🔧 Initialize Firebase
 const app = initializeApp(firebaseConfig);
