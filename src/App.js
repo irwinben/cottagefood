@@ -93,18 +93,22 @@ export default function App() {
     }));
   };
 
-  const updateDish = (day, meal, dish) => {
-    setSchedule(prev => ({
+const updateDish = (day, meal, dish) => {
+  setSchedule(prev => {
+    const dayData = prev[day] || {};
+    const mealData = dayData[meal] || { dish: "", ingredients: [] };
+    return {
       ...prev,
       [day]: {
-        ...prev[day],
+        ...dayData,
         [meal]: {
-          ...prev[day][meal],
+          ...mealData,
           dish
         }
       }
-    }));
-  };
+    };
+  });
+};
 
   const getExportData = () => {
     const data = [];
