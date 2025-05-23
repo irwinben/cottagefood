@@ -338,8 +338,22 @@ const addGuest = () => {
                 {meals.map(meal => (
                   <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
                     <h4 style={{ fontWeight: "bold" }}>{meal}</h4>
-                    <p style={{ fontStyle: "italic", marginBottom: 5 }}>
-                      Guests attending: {
+                    
+                           
+                           <p style={{ fontStyle: "italic", marginBottom: 5 }}>
+  {
+    (() => {
+      const attending = guests.filter(g => schedule[day]?.[meal]?.guests?.[g.name]);
+      const totalAdults = attending.reduce((sum, g) => sum + (g.adults || 0), 0);
+      const totalChildren = attending.reduce((sum, g) => sum + (g.children || 0), 0);
+      return `${totalAdults} adult${totalAdults !== 1 ? 's' : ''}, ${totalChildren} child${totalChildren !== 1 ? 'ren' : ''} attending`;
+    })()
+  }
+</p>
+            
+            
+            
+            {
                         Object.entries(schedule[day]?.[meal]?.guests || {})
                           .filter(([_, attending]) => attending)
                           .map(([guest]) => guest)
