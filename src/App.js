@@ -43,6 +43,11 @@ export default function App() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
+        
+        const loadedGuests = (data.guests || []).map(g =>
+    typeof g === "string" ? { name: g, adults: 0, children: 0 } : g
+  );
+        
         setGuests(data.guests || []);
         setSchedule(data.schedule || {});
         setDays(data.days || []);
