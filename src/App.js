@@ -192,13 +192,13 @@ const addGuest = () => {
             />
             <button type="button" onClick={addGuest}>Add Guest</button>
             
-                
-          <ul>
+                <ul style={{ listStyle: "none", padding: 0 }}>
   {guests.map((g, i) => (
-    <li key={g.name}>
-      <strong>{g.name}</strong>
-      <div style={{ display: "flex", gap: 10, marginTop: 5 }}>
-        <label>Adults:
+    <li key={g.name} style={{ marginBottom: "10px" }}>
+      <div><strong>{g.name}</strong></div>
+      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+        <label>
+          Adults:
           <input
             type="number"
             value={g.adults}
@@ -208,9 +208,11 @@ const addGuest = () => {
               updated[i].adults = parseInt(e.target.value, 10) || 0;
               setGuests(updated);
             }}
+            style={{ width: "60px", marginLeft: "5px" }}
           />
         </label>
-        <label>Children:
+        <label>
+          Children:
           <input
             type="number"
             value={g.children}
@@ -220,13 +222,17 @@ const addGuest = () => {
               updated[i].children = parseInt(e.target.value, 10) || 0;
               setGuests(updated);
             }}
+            style={{ width: "60px", marginLeft: "5px" }}
           />
         </label>
-        <button onClick={() => setGuests(guests.filter((_, j) => j !== i))}>❌ Remove</button>
+        <button onClick={() => setGuests(guests.filter((_, j) => j !== i))}>
+          ❌ Remove
+        </button>
       </div>
     </li>
   ))}
 </ul>
+        
 
 
               
