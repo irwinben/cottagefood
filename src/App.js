@@ -28,7 +28,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default function App() {
-  const [guests, setGuests] = useState([]);
+  const [guests, setGuests] = useState([]); // guests: [{ name, adults, children }]
   const [newGuest, setNewGuest] = useState("");
   const [schedule, setSchedule] = useState({});
   const [days, setDays] = useState([]);
@@ -78,14 +78,13 @@ export default function App() {
     });
     setChatInput("");
   };
-    const addGuest = () => {
-    const name = newGuest.trim();
-    if (name && !guests.includes(name)) {
-      setGuests([...guests, name]);
-      setNewGuest("");
-    }
-  };
-
+const addGuest = () => {
+  const name = newGuest.trim();
+  if (name && !guests.some(g => g.name === name)) {
+    setGuests([...guests, { name, adults: 0, children: 0 }]);
+    setNewGuest("");
+  }
+};
   const toggleGuestPresence = (guest, day, meal) => {
     setSchedule((prev) => {
       const current = prev[day]?.[meal]?.guests?.[guest] || false;
@@ -192,17 +191,45 @@ export default function App() {
               placeholder="Add guest name"
             />
             <button type="button" onClick={addGuest}>Add Guest</button>
-            <ul>
-              {guests.map((g) => (
-                <li key={g}>
-                  {g}{" "}
-                  <button onClick={() => setGuests(guests.filter((guest) => guest !== g))}>
-                    ❌ Remove
-                  </button>
-                </li>
-              ))}
-            </ul>
+            
+                
+          <ul>
+  {guests.map((g, i) => (
+    <li key={g.name}>
+      <strong>{g.name}</strong>
+      <div style={{ display: "flex", gap: 10, marginTop: 5 }}>
+        <label>Adults:
+          <input
+            type="number"
+            value={g.adults}
+            min="0"
+            onChange={(e) => {
+              const updated = [...guests];
+              updated[i].adults = parseInt(e.target.value, 10) || 0;
+              setGuests(updated);
+            }}
+          />
+        </label>
+        <label>Children:
+          <input
+            type="number"
+            value={g.children}
+            min="0"
+            onChange={(e) => {
+              const updated = [...guests];
+              updated[i].children = parseInt(e.target.value, 10) || 0;
+              setGuests(updated);
+            }}
+          />
+        </label>
+        <button onClick={() => setGuests(guests.filter((_, j) => j !== i))}>❌ Remove</button>
+      </div>
+    </li>
+  ))}
+</ul>
 
+
+              
             <h2>Guest Availability</h2>
             <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
               <div style={{ minWidth: '600px' }}>
@@ -226,7 +253,6 @@ export default function App() {
                               border: '1px solid #ccc',
                               padding: '4px',
                               writingMode: 'vertical-rl',
-                              transform: 'rotate(180deg)',
                               textAlign: 'left',
                               minWidth: '40px',
                               background: '#f9f9f9'
