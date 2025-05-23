@@ -160,7 +160,7 @@ export default function App() {
       <ul style={{ listStyle: "none", padding: 0 }}>
         {guests.map((g, i) => (
           <li key={g.name} style={{ marginBottom: "10px" }}>
-            <strong>{g.name}</strong>
+            <div><strong>{g.name || "Unnamed Guest"}</strong></div>
             <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
               <label>
                 Adults:
@@ -264,17 +264,29 @@ export default function App() {
       ))}
 
  <h2>Chat</h2>
-      <div style={{
-        border: "1px solid #ccc",
-        padding: 10,
-        maxHeight: 200,
-        overflowY: "auto",
-        marginBottom: 10
-      }}>
-        {chatMessages.map((msg, i) => (
-          <div key={i}>{msg.message}</div>
-        ))}
-      </div>
+<div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
+  <h2>Chat</h2>
+  <div style={{
+    border: "1px solid #ccc",
+    padding: 10,
+    maxHeight: 300,
+    overflowY: "auto",
+    marginBottom: 10
+  }}>
+    {chatMessages.map((msg, i) => (
+      <div key={i}>{msg.message}</div>
+    ))}
+  </div>
+  <input
+    value={chatInput}
+    onChange={(e) => setChatInput(e.target.value)}
+    placeholder="Type a message"
+    style={{ width: "100%", marginBottom: 10 }}
+  />
+  <button onClick={sendMessage}>Send</button>
+</div>
+
+        
       <input
         value={chatInput}
         onChange={(e) => setChatInput(e.target.value)}
