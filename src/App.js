@@ -339,7 +339,7 @@ const addGuest = () => {
                   <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
                     <h4 style={{ fontWeight: "bold" }}>{meal}</h4>
                     
-                           
+                          <div> 
                            <p style={{ fontStyle: "italic", marginBottom: 5 }}>
   {
     (() => {
@@ -350,7 +350,7 @@ const addGuest = () => {
     })()
   }
 </p>
-            
+  </div>
             
             
             {
