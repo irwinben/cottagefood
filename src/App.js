@@ -28,6 +28,8 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 export default function App() {
+  const [weekendKey, setWeekendKey] = useState("");
+  const [allPlans, setAllPlans] = useState({});
   const [guests, setGuests] = useState([]);
   const [newGuest, setNewGuest] = useState("");
   const [schedule, setSchedule] = useState({});
@@ -43,15 +45,11 @@ export default function App() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        
-        const loadedGuests = (data.guests || []).map(g =>
-    typeof g === "string" ? { name: g, adults: 0, children: 0 } : g
-  );
-        
-        setGuests(data.guests || []);
-        setSchedule(data.schedule || {});
-        setDays(data.days || []);
-        setMeals(data.meals || []);
+        const plans = data.weekends || {};
+        const firstKey = Object.keys(plans)[0] || "First Weekend";
+        setAllPlans(plans);
+        setWeekendKey(firstKey);
+        loadPlan(plans[firstKey]);
       }
       setLoading(false);
     };
@@ -64,17 +62,39 @@ export default function App() {
     return () => unsubscribe();
   }, []);
 
+  const loadPlan = (plan) => {
+    const loadedGuests = (plan.guests || []).map(g => typeof g === "string" ? { name: g, adults: 0, children: 0 } : g);
+    setGuests(loadedGuests);
+    setSchedule(plan.schedule || {});
+    setDays(plan.days || []);
+    setMeals(plan.meals || []);
+  };
+
   useEffect(() => {
-    if (!loading) {
-      setDoc(doc(db, "mealScheduler", "sharedPlan"), {
-        guests,
-        schedule,
-        days,
-        meals
-      });
+    if (!loading && weekendKey) {
+      const updatedPlans = {
+        ...allPlans,
+        [weekendKey]: { guests, schedule, days, meals }
+      };
+      setAllPlans(updatedPlans);
+      setDoc(doc(db, "mealScheduler", "sharedPlan"), { weekends: updatedPlans });
     }
   }, [guests, schedule, days, meals]);
-   const sendMessage = async () => {
+
+  const createNewWeekend = () => {
+    const newKey = prompt("Enter a name for the new weekend:", "New Weekend");
+    if (newKey && !allPlans[newKey]) {
+      setWeekendKey(newKey);
+      setGuests([]);
+      setSchedule({});
+      setDays([]);
+      setMeals([]);
+    } else if (newKey && allPlans[newKey]) {
+      alert("That weekend name already exists.");
+    }
+  };
+
+  const sendMessage = async () => {
     if (chatInput.trim() === "") return;
     await addDoc(collection(db, "chat"), {
       message: chatInput,
@@ -151,9 +171,23 @@ export default function App() {
       }
     }));
   };
-   return (
+
+  return (
     <div style={{ fontFamily: "Arial", padding: 20 }}>
       <h1>Holiday Meal Scheduler</h1>
+
+      <div style={{ marginBottom: 20 }}>
+        <label><strong>Select Weekend:</strong> </label>
+        <select value={weekendKey} onChange={(e) => {
+          setWeekendKey(e.target.value);
+          loadPlan(allPlans[e.target.value]);
+        }}>
+          {Object.keys(allPlans).map(key => (
+            <option key={key} value={key}>{key}</option>
+          ))}
+        </select>
+        <button onClick={createNewWeekend} style={{ marginLeft: 10 }}>➕ New Weekend</button>
+      </div>
 
       <h2>Guests</h2>
       <input
@@ -268,30 +302,12 @@ export default function App() {
         </div>
       ))}
 
- <h2>Chat</h2>
-<div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
-  <h2>Chat</h2>
-  <div style={{
-    border: "1px solid #ccc",
-    padding: 10,
-    maxHeight: 300,
-    overflowY: "auto",
-    marginBottom: 10
-  }}>
-    {chatMessages.map((msg, i) => (
-      <div key={i}>{msg.message}</div>
-    ))}
-  </div>
-  <input
-    value={chatInput}
-    onChange={(e) => setChatInput(e.target.value)}
-    placeholder="Type a message"
-    style={{ width: "100%", marginBottom: 10 }}
-  />
-  <button onClick={sendMessage}>Send</button>
-</div>
-
-        
+      <h2>Chat</h2>
+      <div style={{ border: "1px solid #ccc", padding: 10, maxHeight: 300, overflowY: "auto", marginBottom: 10 }}>
+        {chatMessages.map((msg, i) => (
+          <div key={i}>{msg.message}</div>
+        ))}
+      </div>
       <input
         value={chatInput}
         onChange={(e) => setChatInput(e.target.value)}
@@ -312,7 +328,7 @@ export default function App() {
             }
           }
         }
-        const csvContent = [header, ...rows].map(r => r.map(cell => `"${cell}"`).join(",")).join("\\n");
+        const csvContent = [header, ...rows].map(r => r.map(cell => `"${cell}"`).join(",")).join("\n");
         const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
         const link = document.createElement("a");
         link.href = URL.createObjectURL(blob);
