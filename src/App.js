@@ -40,7 +40,7 @@ export default function App() {
   const [newGuest, setNewGuest] = useState("");
   const [schedule, setSchedule] = useState({});
   const [days, setDays] = useState([]);
-  const [meals, setMeals] = useState([]);
+  const [dailyMeals, setDailyMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
@@ -80,7 +80,7 @@ export default function App() {
     setGuests(loadedGuests);
     setSchedule(plan.schedule || {});
     setDays(plan.days || []);
-    setMeals(plan.meals || []);
+    setDailyMeals(plan.dailyMeals || []);
     setInitialized(true);
   };
 
@@ -88,7 +88,7 @@ export default function App() {
   if (initialized && weekendKey) {
     const updatedPlans = {
       ...allPlans,
-      [weekendKey]: { guests, schedule, days, meals }
+      [weekendKey]: { guests, schedule, days, dailyMeals }
     };
     setAllPlans(updatedPlans);
 
