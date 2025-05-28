@@ -195,18 +195,6 @@ export default function App() {
   createNewWeekend={createNewWeekend}
   loadPlan={loadPlan}
 />
-            
-          {Object.keys(allPlans).map((key) => (
-            <option key={key} value={key}>
-              {key}
-            </option>
-          ))}
-        </select>
-        <button onClick={createNewWeekend} style={{ marginLeft: 10 }}>
-          ➕ New Weekend
-        </button>
-      </div>
-
       <div style={{ display: "flex", alignItems: "flex-start" }}>
         <div style={{ flex: 3, marginRight: 20 }}>
          
