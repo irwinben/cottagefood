@@ -40,6 +40,7 @@ export default function App() {
   const [newGuest, setNewGuest] = useState("");
   const [schedule, setSchedule] = useState({});
   const [days, setDays] = useState([]);
+  const availableMeals = ["Breakfast", "Lunch", "Dinner"];
   const [dailyMeals, setDailyMeals] = useState([]);
   const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState([]);
@@ -93,7 +94,7 @@ export default function App() {
     setAllPlans(updatedPlans);
 
     updateDoc(doc(db, "mealScheduler", "sharedPlan"), {
-  [`weekends.${weekendKey}`]: { guests, schedule, days, meals }
+  [`weekends.${weekendKey}`]: { guests, schedule, days, dailyMeals }
 });
     
   }
@@ -224,14 +225,13 @@ export default function App() {
 <ScheduleEditor
   days={days}
   setDays={setDays}
-  meals={meals}
-  setMeals={setMeals}
 />
 
 <DailyMealSelector
   days={days}
   dailyMeals={dailyMeals}
   setDailyMeals={setDailyMeals}
+  availableMeals={availableMeals}
 />
 
           {/* Unified attendance table */}
@@ -252,7 +252,7 @@ export default function App() {
                 <tr key={guest.name}>
                   <td>{guest.name}</td>
                   {days.map(day =>
-                    meals.map(meal => (
+                    (dailyMeals[day] || []).map(meal => (
                       <td key={`${guest.name}-${day}-${meal}`} style={{ textAlign: "center" }}>
                         <input
                           type="checkbox"
