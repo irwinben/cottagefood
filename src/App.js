@@ -240,11 +240,12 @@ export default function App() {
             <thead>
               <tr>
                 <th>Guest</th>
-                {days.map(day =>
-                  dailyMeals[day] || []).map(meal => (
-                    <th key={`${day}-${meal}`}>{day} {meal}</th>
-                  ))
-                )}
+               
+{days.flatMap(day =>
+  (dailyMeals[day] || []).map(meal => (
+    <th key={`${day}-${meal}`}>{day} {meal}</th>
+  ))
+)}
               </tr>
             </thead>
             <tbody>
