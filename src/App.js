@@ -297,6 +297,46 @@ export default function App() {
           ))}
         </div>
 
+<h2>Export</h2>
+<button onClick={() => {
+  const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
+  const rows = [];
+  for (const day of days) {
+    for (const meal of meals) {
+      const dish = schedule[day]?.[meal]?.dish || "";
+      for (const item of schedule[day]?.[meal]?.ingredients || []) {
+        rows.push([day, meal, dish, item.name, item.person]);
+      }
+    }
+  }
+  const csvContent = [header, ...rows].map(r => r.map(cell => `"${cell}"`).join(",")).join("\\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "meal-plan.csv";
+  link.click();
+}}>Download CSV</button>
+
+<button style={{ marginLeft: 10 }} onClick={() => {
+  const docPDF = new jsPDF();
+  docPDF.text("Cottage Meal Plan", 14, 16);
+  const data = [];
+  for (const day of days) {
+    for (const meal of meals) {
+      const dish = schedule[day]?.[meal]?.dish || "";
+      for (const item of schedule[day]?.[meal]?.ingredients || []) {
+        data.push([day, meal, dish, item.name, item.person]);
+      }
+    }
+  }
+  docPDF.autoTable({
+    head: [["Day", "Meal", "Dish", "Ingredient", "Person"]],
+    body: data,
+    startY: 20
+  });
+  docPDF.save("meal-plan.pdf");
+}}>Download PDF</button>
+
         {/* Right-hand chat panel */}
         <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
           <h2>Chat</h2>
