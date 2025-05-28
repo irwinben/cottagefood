@@ -5,6 +5,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  updateDoc,
   collection,
   addDoc,
   onSnapshot,
@@ -85,7 +86,11 @@ export default function App() {
       [weekendKey]: { guests, schedule, days, meals }
     };
     setAllPlans(updatedPlans);
-    setDoc(doc(db, "mealScheduler", "sharedPlan"), { weekends: updatedPlans });
+
+    updateDoc(doc(db, "mealScheduler", "sharedPlan"), {
+  [`weekends.${weekendKey}`]: { guests, schedule, days, meals }
+});
+    
   }
 }, [guests, schedule, days, meals, weekendKey, initialized]);
   
