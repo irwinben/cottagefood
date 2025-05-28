@@ -98,7 +98,7 @@ export default function App() {
 });
     
   }
-}, [guests, schedule, days, meals, weekendKey, initialized]);
+}, [guests, schedule, days, dailyMeals, weekendKey, initialized]);
   
    const createNewWeekend = () => {
     const newKey = prompt("Enter a name for the new weekend:", "New Weekend");
@@ -241,7 +241,7 @@ export default function App() {
               <tr>
                 <th>Guest</th>
                 {days.map(day =>
-                  meals.map(meal => (
+                  dailyMeals[day] || []).map(meal => (
                     <th key={`${day}-${meal}`}>{day} {meal}</th>
                   ))
                 )}
@@ -272,7 +272,7 @@ export default function App() {
   <div key={day}>
     <h3 style={{ fontSize: "1.5em", marginBottom: "10px" }}>{day}</h3>
     <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-      {meals.map(meal => (
+      {(dailyMeals[day] || []).map(meal => (
         <div
           key={meal}
           style={{
@@ -370,7 +370,7 @@ export default function App() {
   const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
   const rows = [];
   for (const day of days) {
-    for (const meal of meals) {
+    for (const meal of dailyMeals[day] || [])) {
       const dish = schedule[day]?.[meal]?.dish || "";
       for (const item of schedule[day]?.[meal]?.ingredients || []) {
         rows.push([day, meal, dish, item.name, item.person]);
@@ -390,7 +390,7 @@ export default function App() {
   docPDF.text("Cottage Meal Plan", 14, 16);
   const data = [];
   for (const day of days) {
-    for (const meal of meals) {
+    for (const meal of dailyMeals[day] || [])) {
       const dish = schedule[day]?.[meal]?.dish || "";
       for (const item of schedule[day]?.[meal]?.ingredients || []) {
         data.push([day, meal, dish, item.name, item.person]);
