@@ -61,7 +61,11 @@ export default function App() {
     };
     fetchData();
 
-    const q = query(collection(db, "chat"), orderBy("timestamp", "asc"));
+    const q = query(
+  collection(db, `chat_${weekendKey}`),
+  orderBy("timestamp", "asc")
+);
+
     const unsubscribe = onSnapshot(q, (snapshot) =>
       setChatMessages(snapshot.docs.map((doc) => doc.data()))
     );
@@ -114,10 +118,12 @@ export default function App() {
 
   const sendMessage = async () => {
     if (chatInput.trim() === "") return;
-    await addDoc(collection(db, "chat"), {
-      message: chatInput,
-      timestamp: new Date()
-    });
+   
+   await addDoc(collection(db, `chat_${weekendKey}`), {
+  message: chatInput,
+  timestamp: new Date()
+}); 
+  
     setChatInput("");
   };
 
