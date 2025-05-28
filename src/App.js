@@ -297,7 +297,25 @@ export default function App() {
           ))}
         </div>
 
-<h2>Export</h2>
+        {/* Right-hand chat panel */}
+        <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
+          <h2>Chat</h2>
+          <div style={{ border: "1px solid #ccc", padding: 10, maxHeight: 300, overflowY: "auto", marginBottom: 10 }}>
+            {chatMessages.map((msg, i) => (
+              <div key={i}>{msg.message}</div>
+            ))}
+          </div>
+          <input
+            value={chatInput}
+            onChange={(e) => setChatInput(e.target.value)}
+            placeholder="Type a message"
+            style={{ width: "100%", marginBottom: 10 }}
+          />
+          <button onClick={sendMessage}>Send</button>
+        </div>
+      </div>
+    
+    <h2>Export</h2>
 <button onClick={() => {
   const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
   const rows = [];
@@ -336,24 +354,11 @@ export default function App() {
   });
   docPDF.save("meal-plan.pdf");
 }}>Download PDF</button>
-
-        {/* Right-hand chat panel */}
-        <div style={{ flex: 1, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
-          <h2>Chat</h2>
-          <div style={{ border: "1px solid #ccc", padding: 10, maxHeight: 300, overflowY: "auto", marginBottom: 10 }}>
-            {chatMessages.map((msg, i) => (
-              <div key={i}>{msg.message}</div>
-            ))}
-          </div>
-          <input
-            value={chatInput}
-            onChange={(e) => setChatInput(e.target.value)}
-            placeholder="Type a message"
-            style={{ width: "100%", marginBottom: 10 }}
-          />
-          <button onClick={sendMessage}>Send</button>
-        </div>
-      </div>
-    </div>
+        
+            
+            
+            
+            
+            </div>
   );
 }
