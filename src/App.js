@@ -18,6 +18,7 @@ import "jspdf-autotable";
 import WeekendSelector from "./components/WeekendSelector";
 import GuestEditor from "./components/GuestEditor";
 import ScheduleEditor from "./components/ScheduleEditor";
+import DailyMealSelector from "./components/DailyMealSelector";
 
 const firebaseConfig = {
   apiKey: "AIzaSyA1-_xY_BaqYDBZhKYT0qA-vUc_svleaRM",
@@ -225,6 +226,12 @@ export default function App() {
   setDays={setDays}
   meals={meals}
   setMeals={setMeals}
+/>
+
+<DailyMealSelector
+  days={days}
+  dailyMeals={dailyMeals}
+  setDailyMeals={setDailyMeals}
 />
 
           {/* Unified attendance table */}
