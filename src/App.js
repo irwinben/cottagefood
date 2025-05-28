@@ -255,51 +255,83 @@ export default function App() {
           </table>
 
           <h2>Meal Plan</h2>
-          {days.map(day => (
-            <div key={day}>
-              <h3>{day}</h3>
-              {meals.map(meal => (
-                <div key={meal} style={{ border: "1px solid #ccc", margin: "10px 0", padding: 10 }}>
-                  <h4 style={{ fontWeight: "bold" }}>{meal}</h4>
-                  <p style={{ fontStyle: "italic" }}>
-                    {(() => {
-                      const attending = guests.filter(g => schedule[day]?.[meal]?.guests?.[g.name]);
-                      const totalAdults = attending.reduce((sum, g) => sum + (g.adults || 0), 0);
-                      const totalChildren = attending.reduce((sum, g) => sum + (g.children || 0), 0);
-                      return `${totalAdults} adult${totalAdults !== 1 ? "s" : ""}, ${totalChildren} child${totalChildren !== 1 ? "ren" : ""} attending`;
-                    })()}
-                  </p>
-                  <input
-                    value={schedule[day]?.[meal]?.dish || ""}
-                    onChange={(e) => updateDish(day, meal, e.target.value)}
-                    placeholder="Dish name"
-                    style={{ width: "100%", marginBottom: 10 }}
-                  />
-                  {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
-                    <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
-                      <input
-                        value={ing.name}
-                        placeholder="Ingredient"
-                        onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
-                        style={{ flex: 1 }}
-                      />
-                      <select
-                        value={ing.person}
-                        onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
-                        style={{ flex: 1 }}
-                      >
-                        <option value="">Unassigned</option>
-                        {guests.map((g) => (
-                          <option key={g.name} value={g.name}>{g.name}</option>
-                        ))}
-                      </select>
-                    </div>
+{days.map(day => (
+  <div key={day}>
+    <h3 style={{ fontSize: "1.5em", marginBottom: "10px" }}>{day}</h3>
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
+      {meals.map(meal => (
+        <div
+          key={meal}
+          style={{
+            flex: "1 1 300px",
+            border: "1px solid #ccc",
+            borderRadius: "8px",
+            padding: "15px",
+            backgroundColor: "#fdfdfd",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.1)"
+          }}
+        >
+          <h4 style={{ fontWeight: "bold", fontSize: "1.2em", marginBottom: 5 }}>{meal}</h4>
+          <p style={{ fontStyle: "italic", marginBottom: "10px" }}>
+            {(() => {
+              const attending = guests.filter(g => schedule[day]?.[meal]?.guests?.[g.name]);
+              const totalAdults = attending.reduce((sum, g) => sum + (g.adults || 0), 0);
+              const totalChildren = attending.reduce((sum, g) => sum + (g.children || 0), 0);
+              return `${totalAdults} adult${totalAdults !== 1 ? "s" : ""}, ${totalChildren} child${totalChildren !== 1 ? "ren" : ""} attending`;
+            })()}
+          </p>
+
+          <input
+            value={schedule[day]?.[meal]?.dish || ""}
+            onChange={(e) => updateDish(day, meal, e.target.value)}
+            placeholder="Dish name"
+            style={{
+              width: "100%",
+              marginBottom: "10px",
+              padding: "8px",
+              fontSize: "1em",
+              borderRadius: "4px",
+              border: "1px solid #ccc"
+            }}
+          />
+
+          <div style={{
+            marginLeft: "10px",
+            padding: "10px",
+            backgroundColor: "#f9f9f9",
+            borderLeft: "3px solid #ccc",
+            borderRadius: "4px",
+            marginBottom: "10px"
+          }}>
+            <strong style={{ display: "block", marginBottom: 5 }}>Ingredients:</strong>
+            {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
+                <input
+                  value={ing.name}
+                  placeholder="Ingredient"
+                  onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
+                  style={{ flex: 1 }}
+                />
+                <select
+                  value={ing.person}
+                  onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
+                  style={{ flex: 1 }}
+                >
+                  <option value="">Unassigned</option>
+                  {guests.map((g) => (
+                    <option key={g.name} value={g.name}>{g.name}</option>
                   ))}
-                  <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
-                </div>
-              ))}
-            </div>
-          ))}
+                </select>
+              </div>
+            ))}
+            <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+))}
+            
         </div>
 
         {/* Right-hand chat panel */}
