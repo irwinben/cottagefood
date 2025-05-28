@@ -14,6 +14,10 @@ import {
 import jsPDF from "jspdf";
 import "jspdf-autotable";
 
+import WeekendSelector from "./components/WeekendSelector";
+import GuestEditor from "./components/GuestEditor";
+import ScheduleEditor from "./components/ScheduleEditor";
+
 const firebaseConfig = {
   apiKey: "AIzaSyA1-_xY_BaqYDBZhKYT0qA-vUc_svleaRM",
   authDomain: "cottage-meal-planner.firebaseapp.com",
@@ -184,20 +188,14 @@ export default function App() {
     <div style={{ fontFamily: "Arial", padding: 20 }}>
       <h1>Cottage Meal Scheduler</h1>
 
-      <div style={{ marginBottom: 20 }}>
-        <strong>Current Weekend:</strong>{" "}
-        <span style={{ fontSize: "1.5em", color: "#2c3e50" }}>{weekendKey}</span>
-      </div>
-
-      <div style={{ marginBottom: 20 }}>
-        <label><strong>Select Weekend:</strong> </label>
-        <select
-          value={weekendKey}
-          onChange={(e) => {
-            setWeekendKey(e.target.value);
-            loadPlan(allPlans[e.target.value]);
-          }}
-        >
+<WeekendSelector
+  weekendKey={weekendKey}
+  allPlans={allPlans}
+  setWeekendKey={setWeekendKey}
+  createNewWeekend={createNewWeekend}
+  loadPlan={loadPlan}
+/>
+            
           {Object.keys(allPlans).map((key) => (
             <option key={key} value={key}>
               {key}
@@ -211,12 +209,15 @@ export default function App() {
 
       <div style={{ display: "flex", alignItems: "flex-start" }}>
         <div style={{ flex: 3, marginRight: 20 }}>
-          <h2>Guests</h2>
-          <input
-            value={newGuest}
-            onChange={(e) => setNewGuest(e.target.value)}
-            placeholder="Enter guest name"
-          />
+         
+            <GuestEditor
+  guests={guests}
+  setGuests={setGuests}
+  newGuest={newGuest}
+  setNewGuest={setNewGuest}
+  addGuest={addGuest}
+/>
+              
           <button onClick={addGuest}>Add Guest</button>
           <ul style={{ listStyle: "none", padding: 0 }}>
             {guests.map((g, i) => (
@@ -259,21 +260,12 @@ export default function App() {
             ))}
           </ul>
 
-          <h2>Edit Days</h2>
-          <input
-            value={days.join(",")}
-            onChange={(e) => setDays(e.target.value.split(",").map((d) => d.trim()))}
-            placeholder="e.g. Friday,Saturday"
-            style={{ width: "100%" }}
-          />
-
-          <h2>Edit Meals</h2>
-          <input
-            value={meals.join(",")}
-            onChange={(e) => setMeals(e.target.value.split(",").map((m) => m.trim()))}
-            placeholder="e.g. Breakfast,Lunch,Dinner"
-            style={{ width: "100%" }}
-          />
+<ScheduleEditor
+  days={days}
+  setDays={setDays}
+  meals={meals}
+  setMeals={setMeals}
+/>
 
           {/* Unified attendance table */}
           <h2>Guest Attendance</h2>
