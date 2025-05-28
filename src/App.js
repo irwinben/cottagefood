@@ -42,6 +42,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -74,18 +75,20 @@ export default function App() {
     setSchedule(plan.schedule || {});
     setDays(plan.days || []);
     setMeals(plan.meals || []);
+    setInitialized(true);
   };
 
   useEffect(() => {
-    if (!loading && weekendKey) {
-      const updatedPlans = {
-        ...allPlans,
-        [weekendKey]: { guests, schedule, days, meals }
-      };
-      setAllPlans(updatedPlans);
-      setDoc(doc(db, "mealScheduler", "sharedPlan"), { weekends: updatedPlans });
-    }
-  }, [guests, schedule, days, meals, weekendKey]);
+  if (initialized && weekendKey) {
+    const updatedPlans = {
+      ...allPlans,
+      [weekendKey]: { guests, schedule, days, meals }
+    };
+    setAllPlans(updatedPlans);
+    setDoc(doc(db, "mealScheduler", "sharedPlan"), { weekends: updatedPlans });
+  }
+}, [guests, schedule, days, meals, weekendKey, initialized]);
+  
    const createNewWeekend = () => {
     const newKey = prompt("Enter a name for the new weekend:", "New Weekend");
     if (newKey && !allPlans[newKey]) {
