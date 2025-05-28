@@ -2,7 +2,7 @@
 
 import React from "react";
 
-const defaultMealOptions = ["Breakfast", "Lunch", "Dinner"];
+export default function DailyMealSelector({ days, dailyMeals, setDailyMeals, availableMeals }) {
 
 export default function DailyMealSelector({ days, dailyMeals, setDailyMeals }) {
   return (
@@ -12,7 +12,7 @@ export default function DailyMealSelector({ days, dailyMeals, setDailyMeals }) {
         <div key={day} style={{ marginBottom: 10 }}>
           <strong>{day}</strong>
           <div style={{ display: "flex", gap: 10, marginTop: 5 }}>
-            {defaultMealOptions.map((meal) => (
+            {availableMeals.map((meal) => (
               <label key={`${day}-${meal}`}>
                 <input
                   type="checkbox"
