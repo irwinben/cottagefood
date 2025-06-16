@@ -194,10 +194,55 @@ export default function App() {
     }));
   };
 
-  return (
+const generateGuestIngredientSummary = () => {
+    const summary = {};
+
+    for (const day of days) {
+      for (const meal of availableMeals) {
+        const mealData = schedule[day]?.[meal];
+        if (!mealData || !mealData.ingredients) continue;
+
+        for (const { name, person } of mealData.ingredients) {
+          if (!person || !name) continue;
+          if (!summary[person]) summary[person] = [];
+          summary[person].push({ name, day, meal });
+        }
+      }
+    }
+
+    return Object.entries(summary)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([person, items]) => ({ person, items }));
+  };
+
+return (
     <div style={{ fontFamily: "Arial", padding: 20 }}>
       <h1>Cottage Meal Scheduler</h1>
-      {/* UI layout and rendering follows... */}
+
+      <WeekendSelector ... />
+      <GuestEditor ... />
+      <ScheduleEditor ... />
+      <DailyMealSelector ... />
+      {/* other UI elements... */}
+
+      {/* ✅ NEW GUEST INGREDIENT SUMMARY SECTION */}
+      <div style={{ marginTop: "40px" }}>
+        <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
+          What Each Guest is Bringing
+        </h2>
+        {generateGuestIngredientSummary().map(({ person, items }) => (
+          <div key={person} style={{ marginBottom: "15px" }}>
+            <strong>{person}</strong>
+            <ul style={{ marginLeft: "20px" }}>
+              {items.map((item, idx) => (
+                <li key={idx}>
+                  {item.name} ({item.day} – {item.meal})
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
