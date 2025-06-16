@@ -53,8 +53,6 @@ export default function App() {
     setChatMessages(snapshot.docs.map((doc) => doc.data()))
   );
 
-  return () => unsubscribe();
-}, [weekendKey]);
 
   
 
@@ -164,8 +162,6 @@ useEffect(() => {
 
 useEffect(() => {
   if (!weekendKey) return;
-
- 
 
   return (
     <div style={{ fontFamily: "Arial", padding: 20 }}>
