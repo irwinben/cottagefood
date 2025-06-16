@@ -253,24 +253,24 @@ return (
       availableMeals={availableMeals}
     />
 
-    {/* ✅ NEW GUEST INGREDIENT SUMMARY SECTION */}
-    <div style={{ marginTop: "40px" }}>
-      <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
-        What Each Guest is Bringing
-      </h2>
-      {generateGuestIngredientSummary().map(({ person, items }) => (
-        <div key={person} style={{ marginBottom: "15px" }}>
-          <strong>{person}</strong>
-          <ul style={{ marginLeft: "20px" }}>
-            {items.map((item, idx) => (
-              <li key={idx}>
-                {item.name} ({item.day} – {item.meal})
-              </li>
-            ))}
-          </ul>
-        </div>
-      ))}
+     {/* ✅ NEW GUEST INGREDIENT SUMMARY SECTION */}
+      <div style={{ marginTop: "40px" }}>
+        <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
+          What Each Guest is Bringing
+        </h2>
+        {generateGuestIngredientSummary().map(({ person, items }) => (
+          <div key={person} style={{ marginBottom: "15px" }}>
+            <strong>{person}</strong>
+            <ul style={{ marginLeft: "20px" }}>
+              {items.map((item, idx) => (
+                <li key={idx}>
+                  {item.name} ({item.day} – {item.meal})
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
     </div>
-  </div>
-);
+  );
 }
