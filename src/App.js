@@ -49,6 +49,10 @@ export default function App() {
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
+  if (weekendKey && allPlans[weekendKey]) {
+    loadPlan(allPlans[weekendKey]);
+  }
+}, [weekendKey]);
     const fetchData = async () => {
       const docRef = doc(db, "mealScheduler", "sharedPlan");
       const docSnap = await getDoc(docRef);
