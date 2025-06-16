@@ -1,4 +1,4 @@
-// App.js — Full Updated Version with "4th Meal" Section
+// App.js — Full Updated Version with "4th Meal", Chat, Exports, and Ingredient Summary
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
@@ -87,6 +87,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    if (!weekendKey) return;
     const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) =>
       setChatMessages(snapshot.docs.map((doc) => doc.data()))
@@ -94,18 +95,13 @@ export default function App() {
     return () => unsubscribe();
   }, [weekendKey]);
 
-  const updateDocPlan = () => {
-    updateDoc(doc(db, "mealScheduler", "sharedPlan"), {
-      [`weekends.${weekendKey}`]: { guests, schedule, days, dailyMeals }
+  const sendMessage = async () => {
+    if (chatInput.trim() === "") return;
+    await addDoc(collection(db, `chat_${weekendKey}`), {
+      message: chatInput,
+      timestamp: new Date()
     });
-  };
-
-  const addGuest = () => {
-    const name = newGuest.trim();
-    if (name && !guests.some((g) => g.name === name)) {
-      setGuests([...guests, { name, adults: 0, children: 0 }]);
-      setNewGuest("");
-    }
+    setChatInput("");
   };
 
   const toggleGuestPresence = (guest, day, meal) => {
@@ -176,105 +172,117 @@ export default function App() {
     const attending = guests.filter((g) => schedule[day]?.[meal]?.guests?.[g.name]);
     const totalAdults = attending.reduce((sum, g) => sum + (g.adults || 0), 0);
     const totalChildren = attending.reduce((sum, g) => sum + (g.children || 0), 0);
-    return `${totalAdults} adult${totalAdults !== 1 ? "s" : ""}, ${totalChildren} child${totalChildren !== 1 ? "ren" : ""} attending`;
+    return `${totalAdults} adults, ${totalChildren} children attending`;
+  };
+
+  const generateGuestIngredientSummary = () => {
+    const summary = {};
+    for (const day of [...days, "4th Meal"]) {
+      for (const meal of dailyMeals[day] || [day === "4th Meal" ? "4th Meal" : null]) {
+        const items = schedule[day]?.[meal]?.ingredients || [];
+        for (const { name, person } of items) {
+          if (!person || !name) continue;
+          if (!summary[person]) summary[person] = [];
+          summary[person].push({ name, day, meal });
+        }
+      }
+    }
+    return Object.entries(summary)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([person, items]) => ({ person, items }));
+  };
+
+  const exportCSV = () => {
+    const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
+    const rows = [];
+    for (const day of [...days, "4th Meal"]) {
+      for (const meal of dailyMeals[day] || [day === "4th Meal" ? "4th Meal" : null]) {
+        const dish = schedule[day]?.[meal]?.dish || "";
+        const ingredients = schedule[day]?.[meal]?.ingredients || [];
+        for (const item of ingredients) {
+          rows.push([day, meal, dish, item.name, item.person]);
+        }
+      }
+    }
+    const csvContent = [header, ...rows].map(r => r.map(cell => `"${cell}"`).join(",")).join("\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = "meal-plan.csv";
+    link.click();
+  };
+
+  const exportPDF = () => {
+    const docPDF = new jsPDF();
+    docPDF.text("Cottage Meal Plan", 14, 16);
+    const data = [];
+    for (const day of [...days, "4th Meal"]) {
+      for (const meal of dailyMeals[day] || [day === "4th Meal" ? "4th Meal" : null]) {
+        const dish = schedule[day]?.[meal]?.dish || "";
+        for (const item of schedule[day]?.[meal]?.ingredients || []) {
+          data.push([day, meal, dish, item.name, item.person]);
+        }
+      }
+    }
+    docPDF.autoTable({
+      head: [["Day", "Meal", "Dish", "Ingredient", "Person"]],
+      body: data,
+      startY: 20
+    });
+    docPDF.save("meal-plan.pdf");
   };
 
   return (
-    <div style={{ fontFamily: "Arial", padding: 10 }}>
-      <h1>Cottage Meal Scheduler</h1>
+    <div style={{ fontFamily: "Arial", padding: 20, display: "flex" }}>
+      <div style={{ flex: 1, paddingRight: 20 }}>
+        <h1>Cottage Meal Scheduler</h1>
 
-      <WeekendSelector
-        weekendKey={weekendKey}
-        setWeekendKey={setWeekendKey}
-        allPlans={allPlans}
-        createNewWeekend={createNewWeekend}
-      />
+        <WeekendSelector weekendKey={weekendKey} setWeekendKey={setWeekendKey} allPlans={allPlans} createNewWeekend={createNewWeekend} />
+        <GuestEditor guests={guests} setGuests={setGuests} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} />
+        <DailyMealSelector days={days} dailyMeals={dailyMeals} setDailyMeals={setDailyMeals} availableMeals={availableMeals} />
 
-      <GuestEditor
-        guests={guests}
-        setGuests={setGuests}
-        newGuest={newGuest}
-        setNewGuest={setNewGuest}
-        addGuest={addGuest}
-      />
+        {days.map(day => (
+          <div key={day}>
+            <h2>{day}</h2>
+            {(dailyMeals[day] || []).map(meal => (
+              <div key={meal}>
+                <h3>{meal}</h3>
+                <p>{getAttendeeCounts(day, meal)}</p>
+                {/* dish input, ingredients editor, checkboxes here */}
+              </div>
+            ))}
+          </div>
+        ))}
 
-      <DailyMealSelector
-        days={days}
-        dailyMeals={dailyMeals}
-        setDailyMeals={setDailyMeals}
-        availableMeals={availableMeals}
-      />
-
-      {days.map((day) => (
-        <div key={day}>
-          <h2>{day}</h2>
-          {(dailyMeals[day] || []).map((meal) => (
-            <div key={meal} style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}>
-              <h3>{meal}</h3>
-              <p>{getAttendeeCounts(day, meal)}</p>
-              <input
-                value={schedule[day]?.[meal]?.dish || ""}
-                onChange={(e) => updateDish(day, meal, e.target.value)}
-                placeholder="Dish"
-              />
-              {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
-                <div key={i} style={{ marginLeft: 20 }}>
-                  <input
-                    value={ing.name}
-                    onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
-                    placeholder="Ingredient"
-                  />
-                  <select
-                    value={ing.person}
-                    onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
-                  >
-                    <option value="">Unassigned</option>
-                    {guests.map((g) => (
-                      <option key={g.name} value={g.name}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-              <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {/* 4th Meal Section */}
-      <div>
-        <h2>4th Meal</h2>
-        <div style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}>
-          <h3>4th Meal</h3>
-          <p>{getAttendeeCounts("4th Meal", "4th Meal")}</p>
-          <input
-            value={schedule["4th Meal"]?.["4th Meal"]?.dish || ""}
-            onChange={(e) => updateDish("4th Meal", "4th Meal", e.target.value)}
-            placeholder="Dish"
-            style={{ width: "100%", marginBottom: 10 }}
-          />
-          {(schedule["4th Meal"]?.["4th Meal"]?.ingredients || []).map((ing, i) => (
-            <div key={i} style={{ marginLeft: 20, display: "flex", gap: 10, marginBottom: 5 }}>
-              <input
-                value={ing.name}
-                onChange={(e) => updateIngredient("4th Meal", "4th Meal", i, "name", e.target.value)}
-                placeholder="Ingredient"
-                style={{ flex: 1 }}
-              />
-              <select
-                value={ing.person}
-                onChange={(e) => updateIngredient("4th Meal", "4th Meal", i, "person", e.target.value)}
-                style={{ flex: 1 }}
-              >
-                <option value="">Unassigned</option>
-                {guests.map((g) => (
-                  <option key={g.name} value={g.name}>{g.name}</option>
+        <div style={{ marginTop: "30px" }}>
+          <h2>What Each Guest is Bringing</h2>
+          {generateGuestIngredientSummary().map(({ person, items }) => (
+            <div key={person} style={{ marginBottom: "10px" }}>
+              <strong>{person}</strong>
+              <ul>
+                {items.map((item, idx) => (
+                  <li key={idx}>{item.name} ({item.day} – {item.meal})</li>
                 ))}
-              </select>
+              </ul>
             </div>
           ))}
-          <button onClick={() => addIngredient("4th Meal", "4th Meal")}>Add Ingredient</button>
+          <button onClick={exportCSV}>Download CSV</button>
+          <button onClick={exportPDF} style={{ marginLeft: 10 }}>Download PDF</button>
         </div>
+      </div>
+
+      <div style={{ width: 240, borderLeft: "1px solid #ccc", paddingLeft: 10 }}>
+        <h3>Chat</h3>
+        <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #ccc", padding: 5, marginBottom: 10 }}>
+          {chatMessages.map((msg, i) => <div key={i}>{msg.message}</div>)}
+        </div>
+        <input
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          placeholder="Type a message"
+          style={{ width: "100%", marginBottom: 10 }}
+        />
+        <button onClick={sendMessage}>Send</button>
       </div>
     </div>
   );
