@@ -99,6 +99,14 @@ export default function App() {
     return () => unsubscribe();
   }, [weekendKey]);
 
+  useEffect(() => {
+    if (initialized && weekendKey) {
+      updateDoc(doc(db, "mealScheduler", "sharedPlan"), {
+        [`weekends.${weekendKey}`]: { guests, schedule, days, dailyMeals }
+      });
+    }
+  }, [guests, schedule, days, dailyMeals, weekendKey, initialized]);
+
   const sendMessage = async () => {
     if (chatInput.trim() === "") return;
     await addDoc(collection(db, `chat_${weekendKey}`), {
@@ -218,6 +226,46 @@ export default function App() {
           <ScheduleEditor days={days} setDays={setDays} />
           <DailyMealSelector days={days} dailyMeals={dailyMeals} setDailyMeals={setDailyMeals} availableMeals={availableMeals} />
 
+          <h2>Meal Plan</h2>
+          {days.map(day => (
+            <div key={day}>
+              <h3>{day}</h3>
+              {(dailyMeals[day] || []).map(meal => (
+                <div key={meal} style={{ marginBottom: 20 }}>
+                  <h4>{meal}</h4>
+                  <input
+                    value={schedule[day]?.[meal]?.dish || ""}
+                    onChange={(e) => updateDish(day, meal, e.target.value)}
+                    placeholder="Dish name"
+                    style={{ marginBottom: 10, width: "100%" }}
+                  />
+
+                  {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+                    <div key={i} style={{ display: "flex", gap: 10, marginBottom: 5 }}>
+                      <input
+                        value={ing.name}
+                        placeholder="Ingredient"
+                        onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
+                        style={{ flex: 1 }}
+                      />
+                      <select
+                        value={ing.person}
+                        onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
+                        style={{ flex: 1 }}
+                      >
+                        <option value="">Unassigned</option>
+                        {guests.map((g) => (
+                          <option key={g.name} value={g.name}>{g.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))}
+                  <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+                </div>
+              ))}
+            </div>
+          ))}
+
           <h2>Guest Attendance</h2>
           <table border="1" cellPadding="5" style={{ borderCollapse: "collapse", width: "100%", marginBottom: 20 }}>
             <thead>
@@ -259,7 +307,7 @@ export default function App() {
           ))}
         </div>
 
-        <div style={{ flex: 1, minWidth: 280, borderLeft: "1px solid #ccc", paddingLeft: 20 }}>
+        <div style={{ flex: 1, minWidth: 280, borderLeft: "1px solid #ccc", paddingLeft: 10 }}>
           <h2>Chat</h2>
           <div style={{ border: "1px solid #ccc", padding: 10, maxHeight: 300, overflowY: "auto", marginBottom: 10 }}>
             {chatMessages.map((msg, i) => (
