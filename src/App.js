@@ -1,4 +1,4 @@
-// App.js (Cottage Meal Scheduler with compact chat and improved attendance display)
+// App.js — Full Updated Version with "4th Meal" Section
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
@@ -42,10 +42,8 @@ export default function App() {
   const [days, setDays] = useState([]);
   const availableMeals = ["Breakfast", "Lunch", "Dinner"];
   const [dailyMeals, setDailyMeals] = useState({});
-  const [loading, setLoading] = useState(true);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
-  const [initialized, setInitialized] = useState(false);
 
   const loadPlan = (plan) => {
     const loadedGuests = (plan.guests || []).map((g) =>
@@ -55,20 +53,18 @@ export default function App() {
     setSchedule(plan.schedule || {});
     setDays(plan.days || []);
     setDailyMeals(plan.dailyMeals || {});
-    setInitialized(true);
   };
 
   const createNewWeekend = () => {
     const newKey = prompt("Enter a name for the new weekend:", "New Weekend");
     if (newKey && !allPlans[newKey]) {
-      const newPlan = { guests: [], schedule: {}, days: [], dailyMeals: {} };
       const updatedPlans = {
         ...allPlans,
-        [newKey]: newPlan
+        [newKey]: { guests: [], schedule: {}, days: [], dailyMeals: {} }
       };
       setAllPlans(updatedPlans);
       setWeekendKey(newKey);
-      loadPlan(newPlan);
+      loadPlan(updatedPlans[newKey]);
     } else if (newKey && allPlans[newKey]) {
       alert("That weekend name already exists.");
     }
@@ -86,13 +82,11 @@ export default function App() {
         setWeekendKey(firstKey);
         loadPlan(plans[firstKey]);
       }
-      setLoading(false);
     };
     fetchData();
   }, []);
 
   useEffect(() => {
-    if (!weekendKey) return;
     const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) =>
       setChatMessages(snapshot.docs.map((doc) => doc.data()))
@@ -100,26 +94,18 @@ export default function App() {
     return () => unsubscribe();
   }, [weekendKey]);
 
-  useEffect(() => {
-    if (initialized && weekendKey) {
-      const updatedPlans = {
-        ...allPlans,
-        [weekendKey]: { guests, schedule, days, dailyMeals }
-      };
-      setAllPlans(updatedPlans);
-      updateDoc(doc(db, "mealScheduler", "sharedPlan"), {
-        [`weekends.${weekendKey}`]: { guests, schedule, days, dailyMeals }
-      });
-    }
-  }, [guests, schedule, days, dailyMeals, weekendKey, initialized]);
-
-  const sendMessage = async () => {
-    if (chatInput.trim() === "") return;
-    await addDoc(collection(db, `chat_${weekendKey}`), {
-      message: chatInput,
-      timestamp: new Date()
+  const updateDocPlan = () => {
+    updateDoc(doc(db, "mealScheduler", "sharedPlan"), {
+      [`weekends.${weekendKey}`]: { guests, schedule, days, dailyMeals }
     });
-    setChatInput("");
+  };
+
+  const addGuest = () => {
+    const name = newGuest.trim();
+    if (name && !guests.some((g) => g.name === name)) {
+      setGuests([...guests, { name, adults: 0, children: 0 }]);
+      setNewGuest("");
+    }
   };
 
   const toggleGuestPresence = (guest, day, meal) => {
@@ -187,76 +173,108 @@ export default function App() {
   };
 
   const getAttendeeCounts = (day, meal) => {
-    const attendees = guests.filter((g) => schedule[day]?.[meal]?.guests?.[g.name]);
-    const adults = attendees.reduce((sum, g) => sum + (g.adults || 0), 0);
-    const children = attendees.reduce((sum, g) => sum + (g.children || 0), 0);
-    return `${adults} adult${adults !== 1 ? "s" : ""}, ${children} child${children !== 1 ? "ren" : ""}`;
+    const attending = guests.filter((g) => schedule[day]?.[meal]?.guests?.[g.name]);
+    const totalAdults = attending.reduce((sum, g) => sum + (g.adults || 0), 0);
+    const totalChildren = attending.reduce((sum, g) => sum + (g.children || 0), 0);
+    return `${totalAdults} adult${totalAdults !== 1 ? "s" : ""}, ${totalChildren} child${totalChildren !== 1 ? "ren" : ""} attending`;
   };
 
   return (
-    <div style={{ fontFamily: "Arial", padding: 20, display: "flex" }}>
-      <div style={{ flex: 1 }}>
-        <h1>Cottage Meal Scheduler</h1>
+    <div style={{ fontFamily: "Arial", padding: 10 }}>
+      <h1>Cottage Meal Scheduler</h1>
 
-        <WeekendSelector {...{ weekendKey, allPlans, setWeekendKey, createNewWeekend, loadPlan }} />
-        <GuestEditor {...{ guests, setGuests, newGuest, setNewGuest, addGuest }} />
-        <ScheduleEditor {...{ days, setDays }} />
-        <DailyMealSelector {...{ days, dailyMeals, setDailyMeals, availableMeals }} />
+      <WeekendSelector
+        weekendKey={weekendKey}
+        setWeekendKey={setWeekendKey}
+        allPlans={allPlans}
+        createNewWeekend={createNewWeekend}
+      />
 
-        {days.map((day) => (
-          <div key={day}>
-            <h2>{day}</h2>
-            {(dailyMeals[day] || []).map((meal) => (
-              <div key={meal} style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}>
-                <h3>{meal}</h3>
-                <p>{getAttendeeCounts(day, meal)}</p>
-                <input
-                  value={schedule[day]?.[meal]?.dish || ""}
-                  onChange={(e) => updateDish(day, meal, e.target.value)}
-                  placeholder="Dish"
-                  style={{ width: "100%", marginBottom: 10 }}
-                />
-                {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
-                  <div key={i} style={{ marginLeft: 20, display: "flex", gap: 10, marginBottom: 5 }}>
-                    <input
-                      value={ing.name}
-                      onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
-                      placeholder="Ingredient"
-                      style={{ flex: 1 }}
-                    />
-                    <select
-                      value={ing.person}
-                      onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
-                      style={{ flex: 1 }}
-                    >
-                      <option value="">Unassigned</option>
-                      {guests.map((g) => (
-                        <option key={g.name} value={g.name}>{g.name}</option>
-                      ))}
-                    </select>
-                  </div>
-                ))}
-                <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+      <GuestEditor
+        guests={guests}
+        setGuests={setGuests}
+        newGuest={newGuest}
+        setNewGuest={setNewGuest}
+        addGuest={addGuest}
+      />
 
-      <div style={{ width: 240, marginLeft: 20 }}>
-        <h2 style={{ fontSize: "16px" }}>Chat</h2>
-        <div style={{ border: "1px solid #ccc", padding: 10, height: 300, overflowY: "auto" }}>
-          {chatMessages.map((msg, idx) => (
-            <div key={idx}>{msg.message}</div>
+      <DailyMealSelector
+        days={days}
+        dailyMeals={dailyMeals}
+        setDailyMeals={setDailyMeals}
+        availableMeals={availableMeals}
+      />
+
+      {days.map((day) => (
+        <div key={day}>
+          <h2>{day}</h2>
+          {(dailyMeals[day] || []).map((meal) => (
+            <div key={meal} style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}>
+              <h3>{meal}</h3>
+              <p>{getAttendeeCounts(day, meal)}</p>
+              <input
+                value={schedule[day]?.[meal]?.dish || ""}
+                onChange={(e) => updateDish(day, meal, e.target.value)}
+                placeholder="Dish"
+              />
+              {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+                <div key={i} style={{ marginLeft: 20 }}>
+                  <input
+                    value={ing.name}
+                    onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
+                    placeholder="Ingredient"
+                  />
+                  <select
+                    value={ing.person}
+                    onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
+                  >
+                    <option value="">Unassigned</option>
+                    {guests.map((g) => (
+                      <option key={g.name} value={g.name}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ))}
+              <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+            </div>
           ))}
         </div>
-        <input
-          value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
-          placeholder="Type a message"
-          style={{ width: "100%", marginTop: 10 }}
-        />
-        <button onClick={sendMessage} style={{ width: "100%", marginTop: 5 }}>Send</button>
+      ))}
+
+      {/* 4th Meal Section */}
+      <div>
+        <h2>4th Meal</h2>
+        <div style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}>
+          <h3>4th Meal</h3>
+          <p>{getAttendeeCounts("4th Meal", "4th Meal")}</p>
+          <input
+            value={schedule["4th Meal"]?.["4th Meal"]?.dish || ""}
+            onChange={(e) => updateDish("4th Meal", "4th Meal", e.target.value)}
+            placeholder="Dish"
+            style={{ width: "100%", marginBottom: 10 }}
+          />
+          {(schedule["4th Meal"]?.["4th Meal"]?.ingredients || []).map((ing, i) => (
+            <div key={i} style={{ marginLeft: 20, display: "flex", gap: 10, marginBottom: 5 }}>
+              <input
+                value={ing.name}
+                onChange={(e) => updateIngredient("4th Meal", "4th Meal", i, "name", e.target.value)}
+                placeholder="Ingredient"
+                style={{ flex: 1 }}
+              />
+              <select
+                value={ing.person}
+                onChange={(e) => updateIngredient("4th Meal", "4th Meal", i, "person", e.target.value)}
+                style={{ flex: 1 }}
+              >
+                <option value="">Unassigned</option>
+                {guests.map((g) => (
+                  <option key={g.name} value={g.name}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          ))}
+          <button onClick={() => addIngredient("4th Meal", "4th Meal")}>Add Ingredient</button>
+        </div>
       </div>
     </div>
   );
