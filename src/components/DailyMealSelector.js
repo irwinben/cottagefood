@@ -1,13 +1,9 @@
+
 // src/components/DailyMealSelector.js
 
 import React from "react";
 
-export default function DailyMealSelector({
-  days = [],
-  dailyMeals = {},
-  setDailyMeals,
-  availableMeals = []
-}) {
+export default function DailyMealSelector({ days, dailyMeals, setDailyMeals, availableMeals }) {
   return (
     <div style={{ marginTop: 30 }}>
       <h2>Select Meals Per Day</h2>
