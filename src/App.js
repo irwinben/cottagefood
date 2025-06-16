@@ -194,7 +194,7 @@ export default function App() {
     }));
   };
 
-  return (Add commentMore actions
+  return (
     <div style={{ fontFamily: "Arial", padding: 20 }}>
       <h1>Cottage Meal Scheduler</h1>
 
