@@ -216,33 +216,60 @@ const generateGuestIngredientSummary = () => {
   };
 
 return (
-    <div style={{ fontFamily: "Arial", padding: 20 }}>
-      <h1>Cottage Meal Scheduler</h1>
+  <div style={{ fontFamily: "Arial", padding: 20 }}>
+    <h1>Cottage Meal Scheduler</h1>
 
-      <WeekendSelector ... />
-      <GuestEditor ... />
-      <ScheduleEditor ... />
-      <DailyMealSelector ... />
-      {/* other UI elements... */}
+    {/* Replace these props with your actual handler functions */}
+    <WeekendSelector
+      weekendKey={weekendKey}
+      setWeekendKey={setWeekendKey}
+      allPlans={allPlans}
+      createNewWeekend={createNewWeekend}
+    />
 
-      {/* ✅ NEW GUEST INGREDIENT SUMMARY SECTION */}
-      <div style={{ marginTop: "40px" }}>
-        <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
-          What Each Guest is Bringing
-        </h2>
-        {generateGuestIngredientSummary().map(({ person, items }) => (
-          <div key={person} style={{ marginBottom: "15px" }}>
-            <strong>{person}</strong>
-            <ul style={{ marginLeft: "20px" }}>
-              {items.map((item, idx) => (
-                <li key={idx}>
-                  {item.name} ({item.day} – {item.meal})
-                </li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </div>
+    <GuestEditor
+      guests={guests}
+      setGuests={setGuests}
+      newGuest={newGuest}
+      setNewGuest={setNewGuest}
+      addGuest={addGuest}
+    />
+
+    <ScheduleEditor
+      days={days}
+      setDays={setDays}
+      schedule={schedule}
+      setSchedule={setSchedule}
+      guests={guests}
+      toggleGuestPresence={toggleGuestPresence}
+      updateDish={updateDish}
+      addIngredient={addIngredient}
+      updateIngredient={updateIngredient}
+    />
+
+    <DailyMealSelector
+      dailyMeals={dailyMeals}
+      setDailyMeals={setDailyMeals}
+      availableMeals={availableMeals}
+    />
+
+    {/* ✅ NEW GUEST INGREDIENT SUMMARY SECTION */}
+    <div style={{ marginTop: "40px" }}>
+      <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
+        What Each Guest is Bringing
+      </h2>
+      {generateGuestIngredientSummary().map(({ person, items }) => (
+        <div key={person} style={{ marginBottom: "15px" }}>
+          <strong>{person}</strong>
+          <ul style={{ marginLeft: "20px" }}>
+            {items.map((item, idx) => (
+              <li key={idx}>
+                {item.name} ({item.day} – {item.meal})
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
     </div>
-  );
-}
+  </div>
+);
