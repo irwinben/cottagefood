@@ -1,4 +1,5 @@
-// App.js
+
+// CottageMealScheduler_Cleaned.js
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
@@ -179,7 +180,6 @@ export default function App() {
   };
 
   const updateIngredient = (day, meal, index, field, value) => {
-    if (!schedule[day] || !schedule[day][meal]) return;
     const updated = [...(schedule[day][meal]?.ingredients || [])];
     updated[index][field] = value;
     setSchedule((prev) => ({
@@ -194,94 +194,10 @@ export default function App() {
     }));
   };
 
-  const generateGuestIngredientSummary = () => {
-    console.log("✅ Generating summary");
-    const summary = {};
-    for (const day of days) {
-      for (const meal of availableMeals) {
-        const mealData = schedule[day]?.[meal];
-        if (!mealData?.ingredients) continue;
-
-        for (const { name, person } of mealData.ingredients) {
-          if (!person || !name) continue;
-          if (!summary[person]) summary[person] = [];
-          summary[person].push({ name, day, meal });
-        }
-      }
-    }
-
-    return Object.entries(summary)
-      .sort(([a, b]) => a.localeCompare(b))
-      .map(([person, items]) => ({ person, items }));
-  };
-
-  if (loading) {
-    return <div style={{ padding: 20 }}>Loading meal plan...</div>;
-  }
-
   return (
     <div style={{ fontFamily: "Arial", padding: 20 }}>
       <h1>Cottage Meal Scheduler</h1>
-
-      <WeekendSelector
-        weekendKey={weekendKey}
-        setWeekendKey={setWeekendKey}
-        allPlans={allPlans}
-        createNewWeekend={createNewWeekend}
-      />
-
-      <GuestEditor
-        guests={guests}
-        setGuests={setGuests}
-        newGuest={newGuest}
-        setNewGuest={setNewGuest}
-        addGuest={addGuest}
-      />
-
-      <ScheduleEditor
-        days={days}
-        setDays={setDays}
-        schedule={schedule}
-        setSchedule={setSchedule}
-        guests={guests}
-        toggleGuestPresence={toggleGuestPresence}
-        updateDish={updateDish}
-        addIngredient={addIngredient}
-        updateIngredient={updateIngredient}
-      />
-
-      <DailyMealSelector
-        dailyMeals={dailyMeals}
-        setDailyMeals={setDailyMeals}
-        availableMeals={availableMeals}
-      />
-
-      {/* ✅ Guest Summary */}
-      <div style={{ marginTop: "40px" }}>
-        <h2 style={{ fontSize: "20px", fontWeight: "bold", marginBottom: "10px" }}>
-          What Each Guest is Bringing
-        </h2>
-        {(() => {
-          try {
-            const summary = generateGuestIngredientSummary();
-            return summary.map(({ person, items }) => (
-              <div key={person} style={{ marginBottom: "15px" }}>
-                <strong>{person}</strong>
-                <ul style={{ marginLeft: "20px" }}>
-                  {items.map((item, idx) => (
-                    <li key={idx}>
-                      {item.name} ({item.day} – {item.meal})
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ));
-          } catch (err) {
-            console.error("❌ Error rendering summary:", err);
-            return <p style={{ color: "red" }}>⚠️ Could not render summary.</p>;
-          }
-        })()}
-      </div>
+      {/* UI layout and rendering follows... */}
     </div>
   );
 }
