@@ -48,27 +48,30 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [initialized, setInitialized] = useState(false);
 
-  useEffect(() => {
+useEffect(() => {
+  const fetchData = async () => {
+    const docRef = doc(db, "mealScheduler", "sharedPlan");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const plans = data.weekends || {};
+      const firstKey = Object.keys(plans)[0] || "First Weekend";
+      setAllPlans(plans);
+      setWeekendKey(firstKey); // ✅ will trigger the loadPlan effect
+    }
+    setLoading(false);
+  };
+
+  fetchData(); // ✅ called inside useEffect
+}, []); // ✅ run once on mount
+
+useEffect(() => {
   if (weekendKey && allPlans[weekendKey]) {
     loadPlan(allPlans[weekendKey]);
   }
-}, [weekendKey]);
-    const fetchData = async () => {
-      const docRef = doc(db, "mealScheduler", "sharedPlan");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        const plans = data.weekends || {};
-        const firstKey = Object.keys(plans)[0] || "First Weekend";
-        setAllPlans(plans);
-        setWeekendKey(firstKey);
-        loadPlan(plans[firstKey]);
-      }
-      setLoading(false);
-    };
-    fetchData();
+}, [weekendKey, allPlans]);
 
-    useEffect(() => {
+  useEffect(() => {
   if (!weekendKey) return;
 
   const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
@@ -77,49 +80,9 @@ export default function App() {
   );
 
   return () => unsubscribe();
-}, [weekendKey]); // ✅ Reactively updates when weekendKey changes
+}, [weekendKey]);
 
-  const loadPlan = (plan) => {
-    const loadedGuests = (plan.guests || []).map((g) =>
-      typeof g === "string" ? { name: g, adults: 0, children: 0 } : g
-    );
-    setGuests(loadedGuests);
-    setSchedule(plan.schedule || {});
-    setDays(plan.days || []);
-    setDailyMeals(plan.dailyMeals || {});
-    setInitialized(true);
-  };
-
-  useEffect(() => {
-    if (initialized && weekendKey) {
-      const updatedPlans = {
-        ...allPlans,
-        [weekendKey]: { guests, schedule, days, dailyMeals }
-      };
-      setAllPlans(updatedPlans);
-      updateDoc(doc(db, "mealScheduler", "sharedPlan"), {
-        [`weekends.${weekendKey}`]: { guests, schedule, days, dailyMeals }
-      });
-    }
-  }, [guests, schedule, days, dailyMeals, weekendKey, initialized]);
-
-  const createNewWeekend = () => {
-    const newKey = prompt("Enter a name for the new weekend:", "New Weekend");
-    if (newKey && !allPlans[newKey]) {
-      const updatedPlans = {
-        ...allPlans,
-        [newKey]: { guests: [], schedule: {}, days: [], dailyMeals: {} }
-      };
-      setAllPlans(updatedPlans);
-      setWeekendKey(newKey);
-      setGuests([]);
-      setSchedule({});
-      setDays([]);
-      setDailyMeals({});
-    } else if (newKey && allPlans[newKey]) {
-      alert("That weekend name already exists.");
-    }
-  };
+  
 
   const sendMessage = async () => {
     if (chatInput.trim() === "") return;
