@@ -400,11 +400,6 @@ export default function App() {
   });
   docPDF.save("meal-plan.pdf");
 }}>Download PDF</button>
-        
-            
-            
-            
-            
             </div>
   );
 }
