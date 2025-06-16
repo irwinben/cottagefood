@@ -1,4 +1,4 @@
-// App.js (Full Cottage Meal Scheduler)
+// App.js (Cottage Meal Scheduler with compact chat and improved attendance display)
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
@@ -122,14 +122,6 @@ export default function App() {
     setChatInput("");
   };
 
-  const addGuest = () => {
-    const name = newGuest.trim();
-    if (name && !guests.some((g) => g.name === name)) {
-      setGuests([...guests, { name, adults: 0, children: 0 }]);
-      setNewGuest("");
-    }
-  };
-
   const toggleGuestPresence = (guest, day, meal) => {
     setSchedule((prev) => {
       const current = prev[day]?.[meal]?.guests?.[guest] || false;
@@ -194,170 +186,78 @@ export default function App() {
     }));
   };
 
-  const generateGuestIngredientSummary = () => {
-    const summary = {};
-    for (const day of days) {
-      for (const meal of availableMeals) {
-        const mealData = schedule[day]?.[meal];
-        if (!mealData?.ingredients) continue;
-        for (const { name, person } of mealData.ingredients) {
-          if (!person || !name) continue;
-          if (!summary[person]) summary[person] = [];
-          summary[person].push({ name, day, meal });
-        }
-      }
-    }
-    return Object.entries(summary)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([person, items]) => ({ person, items }));
-  };
-
-  const exportCSV = () => {
-    const header = ["Day", "Meal", "Dish", "Ingredient", "Person"];
-    const rows = [];
-    for (const day of days) {
-      for (const meal of dailyMeals[day] || []) {
-        const dish = schedule[day]?.[meal]?.dish || "";
-        for (const item of schedule[day]?.[meal]?.ingredients || []) {
-          rows.push([day, meal, dish, item.name, item.person]);
-        }
-      }
-    }
-    const csvContent = [header, ...rows].map((r) => r.join(",")).join("\n");
-    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(blob);
-    link.download = "meal-plan.csv";
-    link.click();
-  };
-
-  const exportPDF = () => {
-    const docPDF = new jsPDF();
-    docPDF.text("Cottage Meal Plan", 14, 16);
-    const data = [];
-    for (const day of days) {
-      for (const meal of dailyMeals[day] || []) {
-        const dish = schedule[day]?.[meal]?.dish || "";
-        for (const item of schedule[day]?.[meal]?.ingredients || []) {
-          data.push([day, meal, dish, item.name, item.person]);
-        }
-      }
-    }
-    docPDF.autoTable({
-      head: [["Day", "Meal", "Dish", "Ingredient", "Person"]],
-      body: data,
-      startY: 20
-    });
-    docPDF.save("meal-plan.pdf");
+  const getAttendeeCounts = (day, meal) => {
+    const attendees = guests.filter((g) => schedule[day]?.[meal]?.guests?.[g.name]);
+    const adults = attendees.reduce((sum, g) => sum + (g.adults || 0), 0);
+    const children = attendees.reduce((sum, g) => sum + (g.children || 0), 0);
+    return `${adults} adult${adults !== 1 ? "s" : ""}, ${children} child${children !== 1 ? "ren" : ""}`;
   };
 
   return (
-    <div style={{ fontFamily: "Arial", padding: 20 }}>
-      <h1>Cottage Meal Scheduler</h1>
+    <div style={{ fontFamily: "Arial", padding: 20, display: "flex" }}>
+      <div style={{ flex: 1 }}>
+        <h1>Cottage Meal Scheduler</h1>
 
-      <WeekendSelector {...{ weekendKey, allPlans, setWeekendKey, createNewWeekend, loadPlan }} />
-      <GuestEditor {...{ guests, setGuests, newGuest, setNewGuest, addGuest }} />
+        <WeekendSelector {...{ weekendKey, allPlans, setWeekendKey, createNewWeekend, loadPlan }} />
+        <GuestEditor {...{ guests, setGuests, newGuest, setNewGuest, addGuest }} />
+        <ScheduleEditor {...{ days, setDays }} />
+        <DailyMealSelector {...{ days, dailyMeals, setDailyMeals, availableMeals }} />
 
-      <ScheduleEditor {...{ days, setDays }} />
-      <DailyMealSelector {...{ days, dailyMeals, setDailyMeals, availableMeals }} />
-
-      <h2>Attendance</h2>
-      <table border="1" cellPadding="5" style={{ width: "100%", borderCollapse: "collapse" }}>
-        <thead>
-          <tr>
-            <th>Guest</th>
-            {days.flatMap((day) =>
-              (dailyMeals[day] || []).map((meal) => <th key={`${day}-${meal}`}>{day} {meal}</th>)
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {guests.map((guest) => (
-            <tr key={guest.name}>
-              <td>{guest.name}</td>
-              {days.flatMap((day) =>
-                (dailyMeals[day] || []).map((meal) => (
-                  <td key={`${guest.name}-${day}-${meal}`} style={{ textAlign: "center" }}>
+        {days.map((day) => (
+          <div key={day}>
+            <h2>{day}</h2>
+            {(dailyMeals[day] || []).map((meal) => (
+              <div key={meal} style={{ border: "1px solid #ccc", padding: 10, marginBottom: 10 }}>
+                <h3>{meal}</h3>
+                <p>{getAttendeeCounts(day, meal)}</p>
+                <input
+                  value={schedule[day]?.[meal]?.dish || ""}
+                  onChange={(e) => updateDish(day, meal, e.target.value)}
+                  placeholder="Dish"
+                  style={{ width: "100%", marginBottom: 10 }}
+                />
+                {(schedule[day]?.[meal]?.ingredients || []).map((ing, i) => (
+                  <div key={i} style={{ marginLeft: 20, display: "flex", gap: 10, marginBottom: 5 }}>
                     <input
-                      type="checkbox"
-                      checked={schedule[day]?.[meal]?.guests?.[guest.name] || false}
-                      onChange={() => toggleGuestPresence(guest.name, day, meal)}
+                      value={ing.name}
+                      onChange={(e) => updateIngredient(day, meal, i, "name", e.target.value)}
+                      placeholder="Ingredient"
+                      style={{ flex: 1 }}
                     />
-                  </td>
-                ))
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-
-      <h2>Meals and Ingredients</h2>
-      {days.map((day) => (
-        <div key={day}>
-          <h3>{day}</h3>
-          {(dailyMeals[day] || []).map((meal) => (
-            <div key={meal} style={{ border: "1px solid #ccc", marginBottom: 15, padding: 10 }}>
-              <h4>{meal}</h4>
-              <p>{guests.filter((g) => schedule[day]?.[meal]?.guests?.[g.name]).length} guests attending</p>
-              <input
-                value={schedule[day]?.[meal]?.dish || ""}
-                onChange={(e) => updateDish(day, meal, e.target.value)}
-                placeholder="Dish"
-                style={{ width: "100%", marginBottom: 10 }}
-              />
-              {(schedule[day]?.[meal]?.ingredients || []).map((ing, idx) => (
-                <div key={idx} style={{ display: "flex", gap: 10, marginBottom: 5, marginLeft: 20 }}>
-                  <input
-                    value={ing.name}
-                    placeholder="Ingredient"
-                    onChange={(e) => updateIngredient(day, meal, idx, "name", e.target.value)}
-                  />
-                  <select
-                    value={ing.person}
-                    onChange={(e) => updateIngredient(day, meal, idx, "person", e.target.value)}
-                  >
-                    <option value="">Unassigned</option>
-                    {guests.map((g) => (
-                      <option key={g.name} value={g.name}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
-              ))}
-              <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
-            </div>
-          ))}
-        </div>
-      ))}
-
-      <h2>Ingredient Summary</h2>
-      {generateGuestIngredientSummary().map(({ person, items }) => (
-        <div key={person} style={{ marginBottom: "10px" }}>
-          <strong>{person}</strong>
-          <ul>
-            {items.map((item, idx) => (
-              <li key={idx}>{item.name} ({item.day} – {item.meal})</li>
+                    <select
+                      value={ing.person}
+                      onChange={(e) => updateIngredient(day, meal, i, "person", e.target.value)}
+                      style={{ flex: 1 }}
+                    >
+                      <option value="">Unassigned</option>
+                      {guests.map((g) => (
+                        <option key={g.name} value={g.name}>{g.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+                <button onClick={() => addIngredient(day, meal)}>Add Ingredient</button>
+              </div>
             ))}
-          </ul>
-        </div>
-      ))}
+          </div>
+        ))}
+      </div>
 
-      <h2>Chat</h2>
-      <div style={{ display: "flex", flexDirection: "column", maxWidth: 400 }}>
-        <div style={{ border: "1px solid #ccc", padding: 10, height: 200, overflowY: "scroll" }}>
-          {chatMessages.map((msg, idx) => <div key={idx}>{msg.message}</div>)}
+      <div style={{ width: 240, marginLeft: 20 }}>
+        <h2 style={{ fontSize: "16px" }}>Chat</h2>
+        <div style={{ border: "1px solid #ccc", padding: 10, height: 300, overflowY: "auto" }}>
+          {chatMessages.map((msg, idx) => (
+            <div key={idx}>{msg.message}</div>
+          ))}
         </div>
         <input
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           placeholder="Type a message"
-          style={{ marginTop: 5 }}
+          style={{ width: "100%", marginTop: 10 }}
         />
-        <button onClick={sendMessage}>Send</button>
+        <button onClick={sendMessage} style={{ width: "100%", marginTop: 5 }}>Send</button>
       </div>
-
-      <h2>Export</h2>
-      <button onClick={exportCSV}>Download CSV</button>
-      <button onClick={exportPDF} style={{ marginLeft: 10 }}>Download PDF</button>
     </div>
   );
 }
