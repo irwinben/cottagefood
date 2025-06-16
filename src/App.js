@@ -48,33 +48,7 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [initialized, setInitialized] = useState(false);
 
-useEffect(() => {
-  const fetchData = async () => {
-    const docRef = doc(db, "mealScheduler", "sharedPlan");
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      const data = docSnap.data();
-      const plans = data.weekends || {};
-      const firstKey = Object.keys(plans)[0] || "First Weekend";
-      setAllPlans(plans);
-      setWeekendKey(firstKey); // ✅ will trigger the loadPlan effect
-    }
-    setLoading(false);
-  };
-
-  fetchData(); // ✅ called inside useEffect
-}, []); // ✅ run once on mount
-
-useEffect(() => {
-  if (weekendKey && allPlans[weekendKey]) {
-    loadPlan(allPlans[weekendKey]);
-  }
-}, [weekendKey, allPlans]);
-
-  useEffect(() => {
-  if (!weekendKey) return;
-
-  const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
+ const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
   const unsubscribe = onSnapshot(q, (snapshot) =>
     setChatMessages(snapshot.docs.map((doc) => doc.data()))
   );
@@ -164,6 +138,34 @@ useEffect(() => {
       }
     }));
   };
+
+useEffect(() => {
+  const fetchData = async () => {
+    const docRef = doc(db, "mealScheduler", "sharedPlan");
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      const data = docSnap.data();
+      const plans = data.weekends || {};
+      const firstKey = Object.keys(plans)[0] || "First Weekend";
+      setAllPlans(plans);
+      setWeekendKey(firstKey); // ✅ will trigger the loadPlan effect
+    }
+    setLoading(false);
+  };
+
+  fetchData(); // ✅ called inside useEffect
+}, []); // ✅ run once on mount
+
+useEffect(() => {
+  if (weekendKey && allPlans[weekendKey]) {
+    loadPlan(allPlans[weekendKey]);
+  }
+}, [weekendKey, allPlans]);
+
+useEffect(() => {
+  if (!weekendKey) return;
+
+ 
 
   return (
     <div style={{ fontFamily: "Arial", padding: 20 }}>
