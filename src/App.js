@@ -386,7 +386,7 @@ export default function App() {
   docPDF.text("Cottage Meal Plan", 14, 16);
   const data = [];
   for (const day of days) {
-    for (const meal of dailyMeals[day] || [])) {
+    for (const meal of dailyMeals[day] || []) {
       const dish = schedule[day]?.[meal]?.dish || "";
       for (const item of schedule[day]?.[meal]?.ingredients || []) {
         data.push([day, meal, dish, item.name, item.person]);
