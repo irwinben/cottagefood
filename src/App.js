@@ -68,12 +68,16 @@ export default function App() {
     };
     fetchData();
 
-    const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
-    const unsubscribe = onSnapshot(q, (snapshot) =>
-      setChatMessages(snapshot.docs.map((doc) => doc.data()))
-    );
-    return () => unsubscribe();
-  }, []);
+    useEffect(() => {
+  if (!weekendKey) return;
+
+  const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
+  const unsubscribe = onSnapshot(q, (snapshot) =>
+    setChatMessages(snapshot.docs.map((doc) => doc.data()))
+  );
+
+  return () => unsubscribe();
+}, [weekendKey]); // ✅ Reactively updates when weekendKey changes
 
   const loadPlan = (plan) => {
     const loadedGuests = (plan.guests || []).map((g) =>
