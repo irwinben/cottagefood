@@ -40,10 +40,11 @@ export default function App() {
   const [newGuest, setNewGuest] = useState("");
   const [schedule, setSchedule] = useState({});
   const [days, setDays] = useState([]);
-  const availableMeals = ["Breakfast", "Lunch", "Dinner"];
+  const availableMeals = ["Breakfast", "Lunch", "Dinner", "4th Meal"];
   const [dailyMeals, setDailyMeals] = useState({});
   const [chatMessages, setChatMessages] = useState([]);
   const [chatInput, setChatInput] = useState("");
+  const [chatSender, setChatSender] = useState("");
 
   const loadPlan = (plan) => {
     const loadedGuests = (plan.guests || []).map((g) =>
@@ -83,11 +84,30 @@ export default function App() {
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
         const data = docSnap.data();
-        const plans = data.weekends || {};
-        const firstKey = Object.keys(plans)[0] || "First Weekend";
-        setAllPlans(plans);
-        setWeekendKey(firstKey);
-        loadPlan(plans[firstKey]);
+
+        // Support both old flat structure and new weekends-wrapped structure
+        if (data.weekends) {
+          // New structure: { weekends: { "Weekend Name": { days, guests, schedule, dailyMeals } } }
+          const plans = data.weekends;
+          const firstKey = Object.keys(plans)[0] || "First Weekend";
+          setAllPlans(plans);
+          setWeekendKey(firstKey);
+          loadPlan(plans[firstKey]);
+        } else {
+          // Old flat structure: { days, guests, schedule, meals }
+          // Wrap it into the new structure under a default weekend name
+          const weekendName = "Memorial Day Weekend";
+          const plan = {
+            days: data.days || [],
+            guests: data.guests || [],
+            schedule: data.schedule || {},
+            dailyMeals: data.dailyMeals || {}
+          };
+          const plans = { [weekendName]: plan };
+          setAllPlans(plans);
+          setWeekendKey(weekendName);
+          loadPlan(plan);
+        }
       }
     };
     fetchData();
@@ -95,7 +115,9 @@ export default function App() {
 
   useEffect(() => {
     if (!weekendKey) return;
-    const q = query(collection(db, `chat_${weekendKey}`), orderBy("timestamp", "asc"));
+    // Use a sanitized key (no spaces) to avoid Firestore collection name issues
+    const safeKey = weekendKey.replace(/\s+/g, "_");
+    const q = query(collection(db, `chat_${safeKey}`), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) =>
       setChatMessages(snapshot.docs.map((doc) => doc.data()))
     );
@@ -104,8 +126,10 @@ export default function App() {
 
   const sendMessage = async () => {
     if (chatInput.trim() === "") return;
-    await addDoc(collection(db, `chat_${weekendKey}`), {
+    const safeKey = weekendKey.replace(/\s+/g, "_");
+    await addDoc(collection(db, `chat_${safeKey}`), {
       message: chatInput,
+      sender: chatSender.trim() || "Anonymous",
       timestamp: new Date()
     });
     setChatInput("");
@@ -399,17 +423,41 @@ export default function App() {
 
       <div style={{ width: 240, borderLeft: "1px solid #ccc", paddingLeft: 10 }}>
         <h3>Chat</h3>
+
+        {/* Chat message display */}
         <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #ccc", padding: 5, marginBottom: 10 }}>
-          {chatMessages.map((msg, i) => <div key={i}>{msg.message}</div>)}
+          {chatMessages.map((msg, i) => (
+            <div key={i} style={{ marginBottom: 8 }}>
+              <span style={{ fontWeight: "bold", color: "#2c3e50" }}>
+                {msg.sender || "Anonymous"}:
+              </span>{" "}
+              {msg.message}
+              <div style={{ fontSize: "0.75em", color: "#999" }}>
+                {msg.timestamp?.toDate
+                  ? msg.timestamp.toDate().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                  : ""}
+              </div>
+            </div>
+          ))}
         </div>
+
+        {/* Your name input — only need to type once */}
+        <input
+          value={chatSender}
+          onChange={(e) => setChatSender(e.target.value)}
+          placeholder="Your name"
+          style={{ width: "100%", marginBottom: 6 }}
+        />
+
+        {/* Message input */}
         <input
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Type a message"
-          style={{ width: "100%", marginBottom: 10 }}
+          style={{ width: "100%", marginBottom: 6 }}
         />
-        <button onClick={sendMessage}>Send</button>
+        <button onClick={sendMessage} style={{ width: "100%" }}>Send</button>
       </div>
     </div>
   );
