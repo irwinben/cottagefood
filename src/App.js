@@ -70,6 +70,13 @@ export default function App() {
     }
   };
 
+  // FIX: addGuest was referenced but never defined
+  const addGuest = () => {
+    if (!newGuest.trim()) return;
+    setGuests((prev) => [...prev, { name: newGuest.trim(), adults: 1, children: 0 }]);
+    setNewGuest("");
+  };
+
   useEffect(() => {
     const fetchData = async () => {
       const docRef = doc(db, "mealScheduler", "sharedPlan");
@@ -102,6 +109,18 @@ export default function App() {
       timestamp: new Date()
     });
     setChatInput("");
+  };
+
+  // FIX: Add save function — persists current plan to Firestore
+  const savePlan = async () => {
+    const updatedPlans = {
+      ...allPlans,
+      [weekendKey]: { guests, schedule, days, dailyMeals }
+    };
+    const docRef = doc(db, "mealScheduler", "sharedPlan");
+    await updateDoc(docRef, { weekends: updatedPlans });
+    setAllPlans(updatedPlans);
+    alert("Plan saved!");
   };
 
   const toggleGuestPresence = (guest, day, meal) => {
@@ -162,6 +181,20 @@ export default function App() {
         ...prev[day],
         [meal]: {
           ...prev[day][meal],
+          ingredients: updated
+        }
+      }
+    }));
+  };
+
+  const removeIngredient = (day, meal, index) => {
+    const updated = (schedule[day]?.[meal]?.ingredients || []).filter((_, i) => i !== index);
+    setSchedule((prev) => ({
+      ...prev,
+      [day]: {
+        ...prev[day],
+        [meal]: {
+          ...prev[day]?.[meal],
           ingredients: updated
         }
       }
@@ -237,22 +270,115 @@ export default function App() {
       <div style={{ flex: 1, paddingRight: 20 }}>
         <h1>Cottage Meal Scheduler</h1>
 
-        <WeekendSelector weekendKey={weekendKey} setWeekendKey={setWeekendKey} allPlans={allPlans} createNewWeekend={createNewWeekend} />
-        <GuestEditor guests={guests} setGuests={setGuests} newGuest={newGuest} setNewGuest={setNewGuest} addGuest={addGuest} />
-        <DailyMealSelector days={days} dailyMeals={dailyMeals} setDailyMeals={setDailyMeals} availableMeals={availableMeals} />
+        {/* FIX: pass loadPlan to WeekendSelector so switching weekends works */}
+        <WeekendSelector
+          weekendKey={weekendKey}
+          setWeekendKey={setWeekendKey}
+          allPlans={allPlans}
+          createNewWeekend={createNewWeekend}
+          loadPlan={loadPlan}
+        />
+
+        {/* FIX: addGuest is now defined above and passed correctly */}
+        <GuestEditor
+          guests={guests}
+          setGuests={setGuests}
+          newGuest={newGuest}
+          setNewGuest={setNewGuest}
+          addGuest={addGuest}
+        />
+
+        {/* FIX: ScheduleEditor was imported but unused — wired in here */}
+        <ScheduleEditor days={days} setDays={setDays} />
+
+        <DailyMealSelector
+          days={days}
+          dailyMeals={dailyMeals}
+          setDailyMeals={setDailyMeals}
+          availableMeals={availableMeals}
+        />
 
         {days.map(day => (
-          <div key={day}>
+          <div key={day} style={{ marginTop: 20, borderTop: "1px solid #ddd", paddingTop: 10 }}>
             <h2>{day}</h2>
             {(dailyMeals[day] || []).map(meal => (
-              <div key={meal}>
+              <div key={meal} style={{ marginBottom: 20, paddingLeft: 10 }}>
                 <h3>{meal}</h3>
-                <p>{getAttendeeCounts(day, meal)}</p>
-                {/* dish input, ingredients editor, checkboxes here */}
+
+                {/* Dish name input */}
+                <div style={{ marginBottom: 8 }}>
+                  <label>
+                    <strong>Dish: </strong>
+                    <input
+                      value={schedule[day]?.[meal]?.dish || ""}
+                      onChange={(e) => updateDish(day, meal, e.target.value)}
+                      placeholder="e.g. Pancakes"
+                      style={{ marginLeft: 8, width: 220 }}
+                    />
+                  </label>
+                </div>
+
+                {/* Guest attendance checkboxes */}
+                <div style={{ marginBottom: 8 }}>
+                  <strong>Attending guests:</strong>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
+                    {guests.map((g) => (
+                      <label key={g.name}>
+                        <input
+                          type="checkbox"
+                          checked={schedule[day]?.[meal]?.guests?.[g.name] || false}
+                          onChange={() => toggleGuestPresence(g.name, day, meal)}
+                        />
+                        {" "}{g.name}
+                      </label>
+                    ))}
+                  </div>
+                  <p style={{ margin: "4px 0", color: "#555", fontSize: "0.9em" }}>
+                    {getAttendeeCounts(day, meal)}
+                  </p>
+                </div>
+
+                {/* Ingredients editor */}
+                <div>
+                  <strong>Ingredients:</strong>
+                  {(schedule[day]?.[meal]?.ingredients || []).map((ing, idx) => (
+                    <div key={idx} style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center" }}>
+                      <input
+                        value={ing.name}
+                        onChange={(e) => updateIngredient(day, meal, idx, "name", e.target.value)}
+                        placeholder="Ingredient"
+                        style={{ width: 180 }}
+                      />
+                      <select
+                        value={ing.person}
+                        onChange={(e) => updateIngredient(day, meal, idx, "person", e.target.value)}
+                      >
+                        <option value="">-- Who brings it? --</option>
+                        {guests.map((g) => (
+                          <option key={g.name} value={g.name}>{g.name}</option>
+                        ))}
+                      </select>
+                      <button onClick={() => removeIngredient(day, meal, idx)}>✕</button>
+                    </div>
+                  ))}
+                  <button onClick={() => addIngredient(day, meal)} style={{ marginTop: 6 }}>
+                    + Add Ingredient
+                  </button>
+                </div>
               </div>
             ))}
           </div>
         ))}
+
+        {/* FIX: Save button — persists plan to Firestore */}
+        <div style={{ marginTop: 20 }}>
+          <button
+            onClick={savePlan}
+            style={{ backgroundColor: "#2c3e50", color: "white", padding: "8px 16px", fontSize: "1em" }}
+          >
+            Save Plan
+          </button>
+        </div>
 
         <div style={{ marginTop: "30px" }}>
           <h2>What Each Guest is Bringing</h2>
@@ -279,6 +405,7 @@ export default function App() {
         <input
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Type a message"
           style={{ width: "100%", marginBottom: 10 }}
         />
