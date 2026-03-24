@@ -6,7 +6,6 @@ import {
   doc,
   getDoc,
   setDoc,
-  updateDoc,
   collection,
   addDoc,
   onSnapshot,
@@ -241,12 +240,6 @@ export default function App() {
     }));
   };
 
-  const getAttendeeCounts = (day, meal) => {
-    const attending = guests.filter((g) => schedule[day]?.[meal]?.guests?.[g.name]);
-    const totalAdults = attending.reduce((sum, g) => sum + (g.adults || 0), 0);
-    const totalChildren = attending.reduce((sum, g) => sum + (g.children || 0), 0);
-    return `${totalAdults} adults, ${totalChildren} children attending`;
-  };
 
   const generateGuestIngredientSummary = () => {
     const summary = {};
