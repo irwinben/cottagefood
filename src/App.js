@@ -5,6 +5,7 @@ import {
   getFirestore,
   doc,
   getDoc,
+  setDoc,
   updateDoc,
   collection,
   addDoc,
@@ -80,6 +81,7 @@ export default function App() {
 
   useEffect(() => {
     const fetchData = async () => {
+      try {
       const docRef = doc(db, "mealScheduler", "sharedPlan");
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
@@ -108,6 +110,11 @@ export default function App() {
           setWeekendKey(weekendName);
           loadPlan(plan);
         }
+      } else {
+          alert("No plan found in Firebase. The document does not exist yet.");
+        }
+      } catch (err) {
+        alert("Failed to load plan: " + err.message);
       }
     };
     fetchData();
@@ -126,25 +133,34 @@ export default function App() {
 
   const sendMessage = async () => {
     if (chatInput.trim() === "") return;
-    const safeKey = weekendKey.replace(/\s+/g, "_");
-    await addDoc(collection(db, `chat_${safeKey}`), {
-      message: chatInput,
-      sender: chatSender.trim() || "Anonymous",
-      timestamp: new Date()
-    });
-    setChatInput("");
+    try {
+      const safeKey = weekendKey.replace(/\s+/g, "_");
+      await addDoc(collection(db, `chat_${safeKey}`), {
+        message: chatInput,
+        sender: chatSender.trim() || "Anonymous",
+        timestamp: new Date()
+      });
+      setChatInput("");
+    } catch (err) {
+      alert("Chat failed to send: " + err.message);
+    }
   };
 
   // FIX: Add save function — persists current plan to Firestore
   const savePlan = async () => {
-    const updatedPlans = {
-      ...allPlans,
-      [weekendKey]: { guests, schedule, days, dailyMeals }
-    };
-    const docRef = doc(db, "mealScheduler", "sharedPlan");
-    await updateDoc(docRef, { weekends: updatedPlans });
-    setAllPlans(updatedPlans);
-    alert("Plan saved!");
+    try {
+      const updatedPlans = {
+        ...allPlans,
+        [weekendKey]: { guests, schedule, days, dailyMeals }
+      };
+      const docRef = doc(db, "mealScheduler", "sharedPlan");
+      // Use setDoc with merge:true so it works whether the document exists or not
+      await setDoc(docRef, { weekends: updatedPlans }, { merge: true });
+      setAllPlans(updatedPlans);
+      alert("Plan saved!");
+    } catch (err) {
+      alert("Save failed: " + err.message);
+    }
   };
 
   const toggleGuestPresence = (guest, day, meal) => {
@@ -289,6 +305,18 @@ export default function App() {
     docPDF.save("meal-plan.pdf");
   };
 
+  const thStyle = {
+    border: "1px solid #ccc",
+    padding: "6px 12px",
+    backgroundColor: "#f0f0f0",
+    textAlign: "center"
+  };
+
+  const tdStyle = {
+    border: "1px solid #ccc",
+    padding: "6px 12px"
+  };
+
   return (
     <div style={{ fontFamily: "Arial", padding: 20, display: "flex" }}>
       <div style={{ flex: 1, paddingRight: 20 }}>
@@ -322,49 +350,80 @@ export default function App() {
           availableMeals={availableMeals}
         />
 
-        {days.map(day => (
-          <div key={day} style={{ marginTop: 20, borderTop: "1px solid #ddd", paddingTop: 10 }}>
-            <h2>{day}</h2>
-            {(dailyMeals[day] || []).map(meal => (
-              <div key={meal} style={{ marginBottom: 20, paddingLeft: 10 }}>
-                <h3>{meal}</h3>
+        {days.map(day => {
+          const mealsForDay = dailyMeals[day] || [];
+          return (
+            <div key={day} style={{ marginTop: 20, borderTop: "1px solid #ddd", paddingTop: 10 }}>
+              <h2>{day}</h2>
 
-                {/* Dish name input */}
-                <div style={{ marginBottom: 8 }}>
-                  <label>
-                    <strong>Dish: </strong>
-                    <input
-                      value={schedule[day]?.[meal]?.dish || ""}
-                      onChange={(e) => updateDish(day, meal, e.target.value)}
-                      placeholder="e.g. Pancakes"
-                      style={{ marginLeft: 8, width: 220 }}
-                    />
-                  </label>
-                </div>
-
-                {/* Guest attendance checkboxes */}
-                <div style={{ marginBottom: 8 }}>
-                  <strong>Attending guests:</strong>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 10, marginTop: 4 }}>
-                    {guests.map((g) => (
-                      <label key={g.name}>
-                        <input
-                          type="checkbox"
-                          checked={schedule[day]?.[meal]?.guests?.[g.name] || false}
-                          onChange={() => toggleGuestPresence(g.name, day, meal)}
-                        />
-                        {" "}{g.name}
-                      </label>
-                    ))}
+              {/* Dish name inputs — one per meal */}
+              <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 16 }}>
+                {mealsForDay.map(meal => (
+                  <div key={meal}>
+                    <label>
+                      <strong>{meal} — Dish: </strong>
+                      <input
+                        value={schedule[day]?.[meal]?.dish || ""}
+                        onChange={(e) => updateDish(day, meal, e.target.value)}
+                        placeholder="e.g. Pancakes"
+                        style={{ marginLeft: 6, width: 180 }}
+                      />
+                    </label>
                   </div>
-                  <p style={{ margin: "4px 0", color: "#555", fontSize: "0.9em" }}>
-                    {getAttendeeCounts(day, meal)}
-                  </p>
-                </div>
+                ))}
+              </div>
 
-                {/* Ingredients editor */}
-                <div>
-                  <strong>Ingredients:</strong>
+              {/* Attendance table: guests as rows, meals as columns */}
+              {guests.length > 0 && mealsForDay.length > 0 && (
+                <div style={{ marginBottom: 16 }}>
+                  <strong>Attendance:</strong>
+                  <table style={{ borderCollapse: "collapse", marginTop: 8 }}>
+                    <thead>
+                      <tr>
+                        <th style={thStyle}>Guest</th>
+                        {mealsForDay.map(meal => (
+                          <th key={meal} style={thStyle}>{meal}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {guests.map((g) => (
+                        <tr key={g.name}>
+                          <td style={tdStyle}>{g.name}</td>
+                          {mealsForDay.map(meal => (
+                            <td key={meal} style={{ ...tdStyle, textAlign: "center" }}>
+                              <input
+                                type="checkbox"
+                                checked={schedule[day]?.[meal]?.guests?.[g.name] || false}
+                                onChange={() => toggleGuestPresence(g.name, day, meal)}
+                              />
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      {/* Totals row */}
+                      <tr style={{ borderTop: "2px solid #999", fontStyle: "italic", color: "#555" }}>
+                        <td style={tdStyle}>Attending</td>
+                        {mealsForDay.map(meal => {
+                          const attending = guests.filter(g => schedule[day]?.[meal]?.guests?.[g.name]);
+                          const adults = attending.reduce((sum, g) => sum + (g.adults || 0), 0);
+                          const children = attending.reduce((sum, g) => sum + (g.children || 0), 0);
+                          return (
+                            <td key={meal} style={{ ...tdStyle, fontSize: "0.85em" }}>
+                              {adults}A {children}C
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {/* Ingredients editor — one section per meal */}
+              {mealsForDay.map(meal => (
+                <div key={meal} style={{ marginBottom: 16, paddingLeft: 10 }}>
+                  <strong>{meal} — Ingredients:</strong>
                   {(schedule[day]?.[meal]?.ingredients || []).map((ing, idx) => (
                     <div key={idx} style={{ display: "flex", gap: 8, marginTop: 4, alignItems: "center" }}>
                       <input
@@ -389,10 +448,10 @@ export default function App() {
                     + Add Ingredient
                   </button>
                 </div>
-              </div>
-            ))}
-          </div>
-        ))}
+              ))}
+            </div>
+          );
+        })}
 
         {/* FIX: Save button — persists plan to Firestore */}
         <div style={{ marginTop: 20 }}>
