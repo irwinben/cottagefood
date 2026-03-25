@@ -24,9 +24,11 @@ export default function WeekendSelector({ weekendKey, allPlans, setWeekendKey, c
           </option>
         ))}
       </select>
-      <button onClick={createNewWeekend} style={{ marginLeft: 10 }}>
-        ➕ New Weekend
-      </button>
+      {createNewWeekend && (
+        <button onClick={createNewWeekend} style={{ marginLeft: 10 }}>
+          ➕ New Weekend
+        </button>
+      )}
     </div>
   );
 }
