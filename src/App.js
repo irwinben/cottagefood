@@ -1,4 +1,4 @@
-// App.js — Full Updated Version with "4th Meal", Chat, Exports, and Ingredient Summary
+// App.js — Full Updated Version with Admin Mode
 import { useEffect, useState } from "react";
 import { initializeApp } from "firebase/app";
 import {
@@ -33,6 +33,9 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Change this to whatever password you want
+const ADMIN_PASSWORD = "admin";
+
 export default function App() {
   const [weekendKey, setWeekendKey] = useState("");
   const [allPlans, setAllPlans] = useState({});
@@ -46,6 +49,24 @@ export default function App() {
   const [chatInput, setChatInput] = useState("");
   const [chatSender, setChatSender] = useState("");
 
+  // Admin state
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  // ─── Admin login/logout ───────────────────────────────────────────
+  const handleAdminToggle = () => {
+    if (isAdmin) {
+      setIsAdmin(false);
+    } else {
+      const entered = prompt("Enter admin password:");
+      if (entered === ADMIN_PASSWORD) {
+        setIsAdmin(true);
+      } else if (entered !== null) {
+        alert("Incorrect password.");
+      }
+    }
+  };
+
+  // ─── Load plan ────────────────────────────────────────────────────
   const loadPlan = (plan) => {
     const loadedGuests = (plan.guests || []).map((g) =>
       typeof g === "string" ? { name: g, adults: 0, children: 0 } : g
@@ -56,12 +77,20 @@ export default function App() {
     setDailyMeals(plan.dailyMeals || {});
   };
 
+  // ─── Save all plans to Firebase ───────────────────────────────────
+  const saveAllPlans = async (updatedPlans) => {
+    const docRef = doc(db, "mealScheduler", "sharedPlan");
+    await setDoc(docRef, { weekends: updatedPlans }, { merge: true });
+    setAllPlans(updatedPlans);
+  };
+
+  // ─── Create new weekend (admin only) ─────────────────────────────
   const createNewWeekend = () => {
     const newKey = prompt("Enter a name for the new weekend:", "New Weekend");
     if (newKey && !allPlans[newKey]) {
       const updatedPlans = {
         ...allPlans,
-        [newKey]: { guests: [], schedule: {}, days: [], dailyMeals: {} }
+        [newKey]: { guests: [], schedule: {}, days: [], dailyMeals: {}, hidden: false }
       };
       setAllPlans(updatedPlans);
       setWeekendKey(newKey);
@@ -71,45 +100,102 @@ export default function App() {
     }
   };
 
-  // FIX: addGuest was referenced but never defined
+  // ─── Rename weekend (admin only) ─────────────────────────────────
+  const renameWeekend = async () => {
+    const newName = prompt("Enter new name for this weekend:", weekendKey);
+    if (!newName || newName === weekendKey) return;
+    if (allPlans[newName]) {
+      alert("A weekend with that name already exists.");
+      return;
+    }
+    try {
+      const currentPlan = allPlans[weekendKey];
+      const updatedPlans = { ...allPlans };
+      updatedPlans[newName] = currentPlan;
+      delete updatedPlans[weekendKey];
+      await saveAllPlans(updatedPlans);
+      setWeekendKey(newName);
+      alert(`Renamed to "${newName}"`);
+    } catch (err) {
+      alert("Rename failed: " + err.message);
+    }
+  };
+
+  // ─── Delete weekend (admin only) ─────────────────────────────────
+  const deleteWeekend = async () => {
+    if (!window.confirm(`Are you sure you want to permanently delete "${weekendKey}"? This cannot be undone.`)) return;
+    try {
+      const updatedPlans = { ...allPlans };
+      delete updatedPlans[weekendKey];
+      await saveAllPlans(updatedPlans);
+      const remaining = Object.keys(updatedPlans);
+      if (remaining.length > 0) {
+        setWeekendKey(remaining[0]);
+        loadPlan(updatedPlans[remaining[0]]);
+      } else {
+        setWeekendKey("");
+        loadPlan({ guests: [], schedule: {}, days: [], dailyMeals: {} });
+      }
+      alert("Weekend deleted.");
+    } catch (err) {
+      alert("Delete failed: " + err.message);
+    }
+  };
+
+  // ─── Toggle hide/show weekend (admin only) ────────────────────────
+  const toggleHideWeekend = async () => {
+    const currentlyHidden = allPlans[weekendKey]?.hidden || false;
+    const action = currentlyHidden ? "unhide" : "hide";
+    if (!window.confirm(`${action === "hide" ? "Hide" : "Show"} "${weekendKey}" from regular users?`)) return;
+    try {
+      const updatedPlans = {
+        ...allPlans,
+        [weekendKey]: { ...allPlans[weekendKey], hidden: !currentlyHidden }
+      };
+      await saveAllPlans(updatedPlans);
+      alert(`"${weekendKey}" is now ${!currentlyHidden ? "hidden" : "visible"}.`);
+    } catch (err) {
+      alert("Failed: " + err.message);
+    }
+  };
+
+  // ─── Add guest ────────────────────────────────────────────────────
   const addGuest = () => {
     if (!newGuest.trim()) return;
     setGuests((prev) => [...prev, { name: newGuest.trim(), adults: 1, children: 0 }]);
     setNewGuest("");
   };
 
+  // ─── Fetch data on load ───────────────────────────────────────────
   useEffect(() => {
     const fetchData = async () => {
       try {
-      const docRef = doc(db, "mealScheduler", "sharedPlan");
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-
-        // Support both old flat structure and new weekends-wrapped structure
-        if (data.weekends) {
-          // New structure: { weekends: { "Weekend Name": { days, guests, schedule, dailyMeals } } }
-          const plans = data.weekends;
-          const firstKey = Object.keys(plans)[0] || "First Weekend";
-          setAllPlans(plans);
-          setWeekendKey(firstKey);
-          loadPlan(plans[firstKey]);
+        const docRef = doc(db, "mealScheduler", "sharedPlan");
+        const docSnap = await getDoc(docRef);
+        if (docSnap.exists()) {
+          const data = docSnap.data();
+          if (data.weekends) {
+            const plans = data.weekends;
+            // For regular users, skip hidden weekends when picking the first one to show
+            const visibleKeys = Object.keys(plans).filter(k => !plans[k]?.hidden);
+            const firstKey = visibleKeys[0] || Object.keys(plans)[0] || "First Weekend";
+            setAllPlans(plans);
+            setWeekendKey(firstKey);
+            loadPlan(plans[firstKey]);
+          } else {
+            const weekendName = "Memorial Day Weekend";
+            const plan = {
+              days: data.days || [],
+              guests: data.guests || [],
+              schedule: data.schedule || {},
+              dailyMeals: data.dailyMeals || {}
+            };
+            const plans = { [weekendName]: plan };
+            setAllPlans(plans);
+            setWeekendKey(weekendName);
+            loadPlan(plan);
+          }
         } else {
-          // Old flat structure: { days, guests, schedule, meals }
-          // Wrap it into the new structure under a default weekend name
-          const weekendName = "Memorial Day Weekend";
-          const plan = {
-            days: data.days || [],
-            guests: data.guests || [],
-            schedule: data.schedule || {},
-            dailyMeals: data.dailyMeals || {}
-          };
-          const plans = { [weekendName]: plan };
-          setAllPlans(plans);
-          setWeekendKey(weekendName);
-          loadPlan(plan);
-        }
-      } else {
           alert("No plan found in Firebase. The document does not exist yet.");
         }
       } catch (err) {
@@ -119,9 +205,9 @@ export default function App() {
     fetchData();
   }, []);
 
+  // ─── Chat listener ────────────────────────────────────────────────
   useEffect(() => {
     if (!weekendKey) return;
-    // Use a sanitized key (no spaces) to avoid Firestore collection name issues
     const safeKey = weekendKey.replace(/\s+/g, "_");
     const q = query(collection(db, `chat_${safeKey}`), orderBy("timestamp", "asc"));
     const unsubscribe = onSnapshot(q, (snapshot) =>
@@ -130,6 +216,7 @@ export default function App() {
     return () => unsubscribe();
   }, [weekendKey]);
 
+  // ─── Send chat message ────────────────────────────────────────────
   const sendMessage = async () => {
     if (chatInput.trim() === "") return;
     try {
@@ -145,23 +232,27 @@ export default function App() {
     }
   };
 
-  // FIX: Add save function — persists current plan to Firestore
+  // ─── Save plan ────────────────────────────────────────────────────
   const savePlan = async () => {
     try {
       const updatedPlans = {
         ...allPlans,
-        [weekendKey]: { guests, schedule, days, dailyMeals }
+        [weekendKey]: {
+          ...allPlans[weekendKey],
+          guests,
+          schedule,
+          days,
+          dailyMeals
+        }
       };
-      const docRef = doc(db, "mealScheduler", "sharedPlan");
-      // Use setDoc with merge:true so it works whether the document exists or not
-      await setDoc(docRef, { weekends: updatedPlans }, { merge: true });
-      setAllPlans(updatedPlans);
+      await saveAllPlans(updatedPlans);
       alert("Plan saved!");
     } catch (err) {
       alert("Save failed: " + err.message);
     }
   };
 
+  // ─── Schedule helpers ─────────────────────────────────────────────
   const toggleGuestPresence = (guest, day, meal) => {
     setSchedule((prev) => {
       const current = prev[day]?.[meal]?.guests?.[guest] || false;
@@ -171,10 +262,7 @@ export default function App() {
           ...prev[day],
           [meal]: {
             ...prev[day]?.[meal],
-            guests: {
-              ...prev[day]?.[meal]?.guests,
-              [guest]: !current
-            }
+            guests: { ...prev[day]?.[meal]?.guests, [guest]: !current }
           }
         }
       };
@@ -184,13 +272,7 @@ export default function App() {
   const updateDish = (day, meal, dish) => {
     setSchedule((prev) => ({
       ...prev,
-      [day]: {
-        ...prev[day],
-        [meal]: {
-          ...prev[day]?.[meal],
-          dish
-        }
-      }
+      [day]: { ...prev[day], [meal]: { ...prev[day]?.[meal], dish } }
     }));
   };
 
@@ -201,13 +283,7 @@ export default function App() {
     ];
     setSchedule((prev) => ({
       ...prev,
-      [day]: {
-        ...prev[day],
-        [meal]: {
-          ...prev[day]?.[meal],
-          ingredients: newIngredients
-        }
-      }
+      [day]: { ...prev[day], [meal]: { ...prev[day]?.[meal], ingredients: newIngredients } }
     }));
   };
 
@@ -216,13 +292,7 @@ export default function App() {
     updated[index][field] = value;
     setSchedule((prev) => ({
       ...prev,
-      [day]: {
-        ...prev[day],
-        [meal]: {
-          ...prev[day][meal],
-          ingredients: updated
-        }
-      }
+      [day]: { ...prev[day], [meal]: { ...prev[day][meal], ingredients: updated } }
     }));
   };
 
@@ -230,17 +300,11 @@ export default function App() {
     const updated = (schedule[day]?.[meal]?.ingredients || []).filter((_, i) => i !== index);
     setSchedule((prev) => ({
       ...prev,
-      [day]: {
-        ...prev[day],
-        [meal]: {
-          ...prev[day]?.[meal],
-          ingredients: updated
-        }
-      }
+      [day]: { ...prev[day], [meal]: { ...prev[day]?.[meal], ingredients: updated } }
     }));
   };
 
-
+  // ─── Summary / export helpers ─────────────────────────────────────
   const generateGuestIngredientSummary = () => {
     const summary = {};
     for (const day of [...days, "4th Meal"]) {
@@ -264,8 +328,7 @@ export default function App() {
     for (const day of [...days, "4th Meal"]) {
       for (const meal of dailyMeals[day] || [day === "4th Meal" ? "4th Meal" : null]) {
         const dish = schedule[day]?.[meal]?.dish || "";
-        const ingredients = schedule[day]?.[meal]?.ingredients || [];
-        for (const item of ingredients) {
+        for (const item of schedule[day]?.[meal]?.ingredients || []) {
           rows.push([day, meal, dish, item.name, item.person]);
         }
       }
@@ -298,6 +361,7 @@ export default function App() {
     docPDF.save("meal-plan.pdf");
   };
 
+  // ─── Styles ───────────────────────────────────────────────────────
   const thStyle = {
     border: "1px solid #ccc",
     padding: "6px 12px",
@@ -310,21 +374,90 @@ export default function App() {
     padding: "6px 12px"
   };
 
+  const adminBtnStyle = {
+    padding: "6px 12px",
+    marginRight: 8,
+    cursor: "pointer",
+    backgroundColor: "#fff",
+    border: "1px solid #999",
+    borderRadius: 4
+  };
+
+  // Weekends visible to regular users (non-hidden only)
+  const visiblePlans = isAdmin
+    ? allPlans
+    : Object.fromEntries(Object.entries(allPlans).filter(([, v]) => !v?.hidden));
+
+  const isCurrentWeekendHidden = allPlans[weekendKey]?.hidden || false;
+
+  // ─── Render ───────────────────────────────────────────────────────
   return (
     <div style={{ fontFamily: "Arial", padding: 20, display: "flex" }}>
       <div style={{ flex: 1, paddingRight: 20 }}>
-        <h1>Cottage Meal Scheduler</h1>
 
-        {/* FIX: pass loadPlan to WeekendSelector so switching weekends works */}
+        {/* Header row with title and lock icon */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+          <h1 style={{ margin: 0 }}>Cottage Meal Planner</h1>
+          <button
+            onClick={handleAdminToggle}
+            title={isAdmin ? "Exit admin mode" : "Admin login"}
+            style={{ fontSize: "1.4em", background: "none", border: "none", cursor: "pointer" }}
+          >
+            {isAdmin ? "🔓" : "🔒"}
+          </button>
+        </div>
+
+        {/* Admin toolbar — only visible when logged in as admin */}
+        {isAdmin && (
+          <div style={{
+            backgroundColor: "#fef9e7",
+            border: "1px solid #f0c040",
+            borderRadius: 6,
+            padding: "10px 14px",
+            marginBottom: 16,
+            display: "flex",
+            flexWrap: "wrap",
+            alignItems: "center",
+            gap: 8
+          }}>
+            <strong style={{ marginRight: 8 }}>⚙️ Admin:</strong>
+
+            <button style={adminBtnStyle} onClick={createNewWeekend}>
+              ➕ New Weekend
+            </button>
+
+            <button style={adminBtnStyle} onClick={renameWeekend}>
+              ✏️ Rename "{weekendKey}"
+            </button>
+
+            <button style={adminBtnStyle} onClick={toggleHideWeekend}>
+              {isCurrentWeekendHidden ? "👁 Show Weekend" : "🙈 Hide Weekend"}
+            </button>
+
+            <button
+              style={{ ...adminBtnStyle, color: "red", borderColor: "red" }}
+              onClick={deleteWeekend}
+            >
+              🗑 Delete Weekend
+            </button>
+
+            {isCurrentWeekendHidden && (
+              <span style={{ color: "#c0392b", fontStyle: "italic", fontSize: "0.9em" }}>
+                ⚠️ This weekend is currently hidden from regular users
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Weekend selector — shows all weekends to admin, only visible ones to others */}
         <WeekendSelector
           weekendKey={weekendKey}
           setWeekendKey={setWeekendKey}
-          allPlans={allPlans}
-          createNewWeekend={createNewWeekend}
+          allPlans={visiblePlans}
+          createNewWeekend={isAdmin ? createNewWeekend : null}
           loadPlan={loadPlan}
         />
 
-        {/* FIX: addGuest is now defined above and passed correctly */}
         <GuestEditor
           guests={guests}
           setGuests={setGuests}
@@ -333,7 +466,6 @@ export default function App() {
           addGuest={addGuest}
         />
 
-        {/* FIX: ScheduleEditor was imported but unused — wired in here */}
         <ScheduleEditor days={days} setDays={setDays} />
 
         <DailyMealSelector
@@ -349,7 +481,7 @@ export default function App() {
             <div key={day} style={{ marginTop: 20, borderTop: "1px solid #ddd", paddingTop: 10 }}>
               <h2>{day}</h2>
 
-              {/* Dish name inputs — one per meal */}
+              {/* Dish name inputs */}
               <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 16 }}>
                 {mealsForDay.map(meal => (
                   <div key={meal}>
@@ -366,7 +498,7 @@ export default function App() {
                 ))}
               </div>
 
-              {/* Attendance table: guests as rows, meals as columns */}
+              {/* Attendance table */}
               {guests.length > 0 && mealsForDay.length > 0 && (
                 <div style={{ marginBottom: 16 }}>
                   <strong>Attendance:</strong>
@@ -394,7 +526,6 @@ export default function App() {
                           ))}
                         </tr>
                       ))}
-                      {/* Totals row */}
                       <tr style={{ borderTop: "2px solid #999", fontStyle: "italic", color: "#555" }}>
                         <td style={tdStyle}>Attending</td>
                         {mealsForDay.map(meal => {
@@ -413,7 +544,7 @@ export default function App() {
                 </div>
               )}
 
-              {/* Ingredients editor — one section per meal */}
+              {/* Ingredients editor */}
               {mealsForDay.map(meal => (
                 <div key={meal} style={{ marginBottom: 16, paddingLeft: 10 }}>
                   <strong>{meal} — Ingredients:</strong>
@@ -446,7 +577,6 @@ export default function App() {
           );
         })}
 
-        {/* FIX: Save button — persists plan to Firestore */}
         <div style={{ marginTop: 20 }}>
           <button
             onClick={savePlan}
@@ -473,10 +603,9 @@ export default function App() {
         </div>
       </div>
 
+      {/* Chat sidebar */}
       <div style={{ width: 240, borderLeft: "1px solid #ccc", paddingLeft: 10 }}>
         <h3>Chat</h3>
-
-        {/* Chat message display */}
         <div style={{ maxHeight: 300, overflowY: "auto", border: "1px solid #ccc", padding: 5, marginBottom: 10 }}>
           {chatMessages.map((msg, i) => (
             <div key={i} style={{ marginBottom: 8 }}>
@@ -492,16 +621,12 @@ export default function App() {
             </div>
           ))}
         </div>
-
-        {/* Your name input — only need to type once */}
         <input
           value={chatSender}
           onChange={(e) => setChatSender(e.target.value)}
           placeholder="Your name"
           style={{ width: "100%", marginBottom: 6 }}
         />
-
-        {/* Message input */}
         <input
           value={chatInput}
           onChange={(e) => setChatInput(e.target.value)}
