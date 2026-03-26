@@ -34,7 +34,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Change this to whatever password you want
-const ADMIN_PASSWORD = "cottage2025";
+const ADMIN_PASSWORD = "admin";
 
 export default function App() {
   const [weekendKey, setWeekendKey] = useState("");
