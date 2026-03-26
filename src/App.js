@@ -34,7 +34,7 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 // Change this to whatever password you want
-const ADMIN_PASSWORD = "admin";
+const ADMIN_PASSWORD = "cottage2025";
 
 export default function App() {
   const [weekendKey, setWeekendKey] = useState("");
@@ -343,22 +343,66 @@ export default function App() {
 
   const exportPDF = () => {
     const docPDF = new jsPDF();
-    docPDF.text("Cottage Meal Plan", 14, 16);
-    const data = [];
-    for (const day of [...days, "4th Meal"]) {
-      for (const meal of dailyMeals[day] || [day === "4th Meal" ? "4th Meal" : null]) {
+    docPDF.setFontSize(16);
+    docPDF.text("Cottage Meal Plan — What Each Guest is Bringing", 14, 16);
+
+    // Build a map of person -> list of { day, meal, dish, ingredient }
+    const byGuest = {};
+    for (const day of days) {
+      for (const meal of dailyMeals[day] || []) {
         const dish = schedule[day]?.[meal]?.dish || "";
         for (const item of schedule[day]?.[meal]?.ingredients || []) {
-          data.push([day, meal, dish, item.name, item.person]);
+          if (!item.person || !item.name) continue;
+          if (!byGuest[item.person]) byGuest[item.person] = [];
+          byGuest[item.person].push({ day, meal, dish, ingredient: item.name });
         }
       }
     }
-    docPDF.autoTable({
-      head: [["Day", "Meal", "Dish", "Ingredient", "Person"]],
-      body: data,
-      startY: 20
-    });
-    docPDF.save("meal-plan.pdf");
+
+    const sortedGuests = Object.keys(byGuest).sort();
+
+    let currentY = 26;
+
+    for (const person of sortedGuests) {
+      const items = byGuest[person];
+
+      // Guest name as a section header
+      docPDF.setFontSize(13);
+      docPDF.setTextColor(44, 62, 80); // dark blue-grey
+      docPDF.text(person, 14, currentY);
+      currentY += 2;
+
+      // Table of their items
+      docPDF.autoTable({
+        head: [["Day", "Meal", "Dish", "Ingredient"]],
+        body: items.map(i => [i.day, i.meal, i.dish, i.ingredient]),
+        startY: currentY,
+        margin: { left: 14 },
+        styles: { fontSize: 10 },
+        headStyles: { fillColor: [189, 195, 199] }, // light grey header
+        didDrawPage: () => {
+          // Reset text color after page break
+          docPDF.setTextColor(44, 62, 80);
+        }
+      });
+
+      currentY = docPDF.lastAutoTable.finalY + 10;
+
+      // If we're close to the bottom of the page, add a new page
+      if (currentY > 260 && sortedGuests.indexOf(person) < sortedGuests.length - 1) {
+        docPDF.addPage();
+        currentY = 20;
+      }
+    }
+
+    // If no ingredients were assigned to anyone
+    if (sortedGuests.length === 0) {
+      docPDF.setFontSize(11);
+      docPDF.setTextColor(100);
+      docPDF.text("No ingredients have been assigned to guests yet.", 14, 30);
+    }
+
+    docPDF.save("meal-plan-by-guest.pdf");
   };
 
   // ─── Styles ───────────────────────────────────────────────────────
